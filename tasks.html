@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#3b82f6">
+  <title>任务管理 - 暑假学习管家</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-container">
+
+  <!-- 顶部 -->
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-xl font-bold text-gray-800">📋 任务管理</h1>
+    <p class="text-sm text-gray-500" id="today-date"></p>
+  </div>
+
+  <!-- 孩子切换 -->
+  <div class="scroll-x mb-3">
+    <div class="flex gap-2" id="child-tabs" style="display:inline-flex;"></div>
+  </div>
+
+  <!-- 完成率概览 -->
+  <div class="card mb-3" id="overview-card">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm text-gray-500">今日完成率</p>
+        <p class="text-2xl font-bold" id="completion-rate">0%</p>
+        <p class="text-xs text-gray-400 mt-1" id="completion-detail"></p>
+      </div>
+      <div id="progress-ring-container"></div>
+    </div>
+  </div>
+
+  <!-- 筛选标签 -->
+  <div class="scroll-x mb-3">
+    <div class="flex gap-2" id="filter-tabs" style="display:inline-flex;">
+      <button class="btn btn-sm btn-primary filter-btn active" data-filter="all">全部</button>
+      <button class="btn btn-sm btn-outline filter-btn" data-filter="pending">待完成</button>
+      <button class="btn btn-sm btn-outline filter-btn" data-filter="completed">已完成</button>
+      <button class="btn btn-sm btn-outline filter-btn" data-filter="partial">部分完成</button>
+      <button class="btn btn-sm btn-outline filter-btn" data-filter="math">数学</button>
+      <button class="btn btn-sm btn-outline filter-btn" data-filter="chinese">语文</button>
+      <button class="btn btn-sm btn-outline filter-btn" data-filter="english">英语</button>
+    </div>
+  </div>
+
+  <!-- 任务列表 -->
+  <div id="task-list"></div>
+
+  <!-- 空状态 -->
+  <div id="empty-state" class="empty-state" style="display:none;">
+    <div class="empty-icon">🎉</div>
+    <p>今日任务全部完成！</p>
+    <p class="text-xs mt-2">或者还没有任务，点击下方 + 添加</p>
+  </div>
+
+  <!-- 手动添加任务按钮 -->
+  <button onclick="openAddTaskModal()" class="fab" aria-label="添加任务">+</button>
+
+</div>
+
+<!-- 底部导航 -->
+<div id="bottom-nav"></div>
+
+<!-- 任务操作模态框 -->
+<div class="modal-overlay" id="task-modal">
+  <div class="modal-content">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold" id="modal-title">任务详情</h3>
+      <button onclick="closeModal()" class="text-gray-400 text-xl">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- 添加任务模态框 -->
+<div class="modal-overlay" id="add-task-modal">
+  <div class="modal-content">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold">添加临时任务</h3>
+      <button onclick="closeAddModal()" class="text-gray-400 text-xl">✕</button>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="text-xs text-gray-500">任务名称</label>
+        <input type="text" id="add-task-name" class="form-input" placeholder="例如：练字20分钟">
+      </div>
+      <div>
+        <label class="text-xs text-gray-500">孩子</label>
+        <select id="add-task-child" class="form-input">
+          <option value="brother">哥哥</option>
+          <option value="little">弟弟</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500">科目</label>
+        <select id="add-task-subject" class="form-input">
+          <option value="math">数学</option>
+          <option value="chinese">语文</option>
+          <option value="english">英语</option>
+          <option value="other">其他</option>
+        </select>
+      </div>
+      <div class="flex gap-3">
+        <div class="flex-1">
+          <label class="text-xs text-gray-500">时长（分钟）</label>
+          <input type="number" id="add-task-duration" class="form-input" value="20" min="1">
+        </div>
+        <div class="flex-1">
+          <label class="text-xs text-gray-500">积分</label>
+          <input type="number" id="add-task-points" class="form-input" value="5" min="0">
+        </div>
+      </div>
+      <button onclick="submitAddTask()" class="btn btn-primary w-full">添加任务</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+(function() {
+  const store = SSMStore;
+  const app = SSMApp;
+  let currentChild = 'brother';
+  let currentFilter = 'all';
+
+  function init() {
+    // 从URL参数获取孩子
+    const params = new URLSearchParams(location.search);
+    if (params.get('child')) currentChild = params.get('child');
+
+    document.getElementById('today-date').textContent = app.formatDate(app.todayStr());
+    renderChildTabs();
+    renderTasks();
+    app.injectNav();
+
+    // 筛选事件
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(b => {
+          b.classList.remove('btn-primary', 'active');
+          b.classList.add('btn-outline');
+        });
+        this.classList.remove('btn-outline');
+        this.classList.add('btn-primary', 'active');
+        currentFilter = this.dataset.filter;
+        renderTasks();
+      });
+    });
+  }
+
+  function renderChildTabs() {
+    const children = store.getChildren() || [];
+    const container = document.getElementById('child-tabs');
+    if (children.length === 0) {
+      container.innerHTML = '<span class="text-xs text-gray-400">孩子信息加载失败</span>';
+      return;
+    }
+    container.innerHTML = children.map(c => {
+      const active = c.id === currentChild;
+      const points = store.getPoints(c.id);
+      return `
+        <button onclick="switchChild('${c.id}')" class="btn btn-sm ${active ? 'btn-primary' : 'btn-outline'}">
+          ${c.name} ⭐${points}
+        </button>
+      `;
+    }).join('');
+  }
+
+  function renderTasks() {
+    let tasks = store.getTodayTasks(currentChild);
+
+    // 更新概览
+    const completed = tasks.filter(t => t.status === 'completed').length;
+    const partial = tasks.filter(t => t.status === 'partial').length;
+    const total = tasks.length;
+    const rate = total > 0 ? (completed + partial * 0.5) / total : 0;
+    document.getElementById('completion-rate').textContent = Math.round(rate * 100) + '%';
+    document.getElementById('completion-detail').textContent = `${completed}完成 · ${partial}部分 · ${total - completed - partial}待完成`;
+    document.getElementById('progress-ring-container').innerHTML = app.progressRingSVG(rate, 60);
+
+    // 筛选
+    tasks = filterTasks(tasks);
+
+    // 渲染列表
+    const container = document.getElementById('task-list');
+    const emptyState = document.getElementById('empty-state');
+
+    if (tasks.length === 0) {
+      container.innerHTML = '';
+      emptyState.style.display = 'block';
+      return;
+    }
+
+    emptyState.style.display = 'none';
+
+    // 按科目分组
+    const groups = {};
+    tasks.forEach(t => {
+      const template = store.getTaskTemplateById(t.templateId);
+      if (!template) return;
+      const subject = template.subject || 'other';
+      if (!groups[subject]) groups[subject] = [];
+      groups[subject].push({ instance: t, template });
+    });
+
+    const subjectOrder = ['math', 'chinese', 'english', 'other'];
+    const subjectNames = { math: '数学', chinese: '语文', english: '英语', other: '其他' };
+
+    let html = '';
+    subjectOrder.forEach(subject => {
+      if (!groups[subject]) return;
+      html += `<h3 class="text-sm font-bold text-gray-500 mt-3 mb-2">${subjectNames[subject]}</h3>`;
+      groups[subject].forEach(({ instance, template }) => {
+        html += renderTaskItem(instance, template);
+      });
+    });
+
+    container.innerHTML = html;
+  }
+
+  function renderTaskItem(instance, template) {
+    const status = instance.status;
+    let checkboxClass = '';
+    let statusIcon = '';
+    if (status === 'completed') {
+      checkboxClass = 'checked';
+      statusIcon = '✓';
+    } else if (status === 'partial') {
+      checkboxClass = 'partial';
+      statusIcon = '◐';
+    }
+
+    const carryOver = instance.carryOver ? 'carry-over' : '';
+    const completedClass = status === 'completed' ? 'completed' : status === 'partial' ? 'partial' : '';
+    const points = template.points || 0;
+    const earnedPoints = instance.pointsEarned || 0;
+
+    return `
+      <div class="task-item ${completedClass} ${carryOver}">
+        <div class="task-checkbox ${checkboxClass}" onclick="event.stopPropagation(); toggleTaskComplete('${instance.id}')">${statusIcon}</div>
+        <div class="flex-1 min-w-0" onclick="openTaskModal('${instance.id}')">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-sm font-medium text-gray-800">${template.name}</span>
+            ${app.hardTag(template.hardToStart)}
+            ${app.flexibleTag(template.flexible)}
+            ${instance.carryOver ? '<span class="tag tag-hard">顺延</span>' : ''}
+          </div>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="text-xs text-gray-400">${template.duration || ''}分钟</span>
+            <span class="text-xs ${earnedPoints > 0 ? 'text-green-600 font-bold' : 'text-gray-400'}">+${earnedPoints}/${points}分</span>
+          </div>
+        </div>
+        <div class="text-gray-300" onclick="openTaskModal('${instance.id}')">›</div>
+      </div>
+    `;
+  }
+
+  // 快速勾选/取消完成任务
+  window.toggleTaskComplete = function(instanceId) {
+    const instance = store.getTaskInstanceById(instanceId);
+    if (!instance) return;
+    const template = store.getTaskTemplateById(instance.templateId);
+    if (!template) return;
+
+    if (instance.status === 'completed') {
+      // 已完成则变回未完成（撤销）
+      store.markComplete(instanceId, 0);
+      app.toast(`已取消「${template.name}」的完成状态`);
+    } else {
+      // 未完成则标记完成
+      store.markComplete(instanceId, 1);
+      app.toast(`🎉 「${template.name}」完成！+${template.points}分`);
+    }
+    renderChildTabs();
+    renderTasks();
+  };
+
+  function filterTasks(tasks) {
+    if (currentFilter === 'all') return tasks;
+    if (currentFilter === 'pending') return tasks.filter(t => t.status === 'pending');
+    if (currentFilter === 'completed') return tasks.filter(t => t.status === 'completed');
+    if (currentFilter === 'partial') return tasks.filter(t => t.status === 'partial');
+    // 科目筛选
+    return tasks.filter(t => {
+      const template = store.getTaskTemplateById(t.templateId);
+      return template && template.subject === currentFilter;
+    });
+  }
+
+  // 切换孩子
+  window.switchChild = function(id) {
+    currentChild = id;
+    renderChildTabs();
+    renderTasks();
+  };
+
+  // 打开任务操作模态框
+  window.openTaskModal = function(instanceId) {
+    const instance = store.getTaskInstanceById(instanceId);
+    if (!instance) return;
+    const template = store.getTaskTemplateById(instance.templateId);
+    if (!template) return;
+
+    document.getElementById('modal-title').textContent = template.name;
+
+    const status = instance.status;
+    let statusText = '待完成';
+    if (status === 'completed') statusText = '已完成';
+    if (status === 'partial') statusText = '部分完成';
+
+    let depWarning = '';
+    if (template.dependsOn) {
+      const depTemplate = store.getTaskTemplateById(template.dependsOn);
+      if (depTemplate) {
+        depWarning = `<div class="card" style="background:#fef3c7;margin-bottom:12px;">
+          <p class="text-xs text-yellow-800">⚠️ 依赖任务：需先完成「${depTemplate.name}」</p>
+        </div>`;
+      }
+    }
+
+    let guideNote = '';
+    if (template.needMomGuide) {
+      guideNote = `<div class="card" style="background:#dbeafe;margin-bottom:12px;">
+        <p class="text-xs text-blue-800">💡 需要妈妈引导完成</p>
+      </div>`;
+    }
+    if (template.easyToForget) {
+      guideNote += `<div class="card" style="background:#fee2e2;margin-bottom:12px;">
+        <p class="text-xs text-red-800">🔔 容易忘记，建议设闹钟提醒</p>
+      </div>`;
+    }
+
+    let descNote = '';
+    if (template.description) {
+      descNote = `<p class="text-sm text-gray-500 mb-3">📝 ${template.description}</p>`;
+    }
+
+    document.getElementById('modal-body').innerHTML = `
+      ${depWarning}
+      ${guideNote}
+      ${descNote}
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="text-xs text-gray-400">科目</p>
+          <p>${app.subjectTag(template.subject)}</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-400">时长</p>
+          <p class="text-sm font-medium">${template.duration || 0} 分钟</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-400">积分</p>
+          <p class="text-sm font-bold text-blue-600">${template.points} 分</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-400">状态</p>
+          <p class="text-sm font-medium">${statusText}</p>
+        </div>
+      </div>
+
+      ${template.hardToStart ? `
+      <div class="card" style="background:#f0fdf4;margin-bottom:12px;">
+        <p class="text-xs text-green-700">💪 启动难任务建议：</p>
+        <ul class="text-xs text-green-600 mt-1 ml-4 list-disc">
+          <li>用"2分钟规则"：只做2分钟就好</li>
+          <li>先做最简单的部分</li>
+          <li>陪伴启动，不催促</li>
+        </ul>
+      </div>
+      ` : ''}
+
+      <div class="space-y-2">
+        <button onclick="markTask('${instanceId}', 1)" class="btn btn-success w-full">
+          ✓ 标记完成 (+${template.points}分)
+        </button>
+        <button onclick="markTask('${instanceId}', 0.5)" class="btn btn-warning w-full">
+          ◐ 标记部分完成 (+${Math.round(template.points * 0.5)}分)
+        </button>
+        <button onclick="markTask('${instanceId}', 0)" class="btn btn-outline w-full">
+          ✗ 标记未完成（顺延到明天）
+        </button>
+      </div>
+
+      ${instance.note ? `<div class="mt-3 p-3 bg-gray-50 rounded-lg"><p class="text-xs text-gray-500">备注：${instance.note}</p></div>` : ''}
+    `;
+
+    document.getElementById('task-modal').classList.add('active');
+  };
+
+  window.closeModal = function() {
+    document.getElementById('task-modal').classList.remove('active');
+  };
+
+  // 添加任务相关
+  window.openAddTaskModal = function() {
+    // 默认选择当前孩子
+    document.getElementById('add-task-child').value = currentChild;
+    document.getElementById('add-task-modal').classList.add('active');
+  };
+
+  window.closeAddModal = function() {
+    document.getElementById('add-task-modal').classList.remove('active');
+  };
+
+  window.submitAddTask = function() {
+    const name = document.getElementById('add-task-name').value.trim();
+    const childId = document.getElementById('add-task-child').value;
+    const subject = document.getElementById('add-task-subject').value;
+    const duration = parseInt(document.getElementById('add-task-duration').value, 10) || 20;
+    const points = parseInt(document.getElementById('add-task-points').value, 10) || 5;
+
+    if (!name) {
+      app.toast('请输入任务名称');
+      return;
+    }
+
+    const todayStr = app.todayStr();
+    const newTemplate = {
+      id: 'custom_' + Date.now(),
+      childId: childId,
+      name: name,
+      subject: subject,
+      duration: duration,
+      points: points,
+      frequency: 'daily',
+      daily: true,
+      custom: true
+    };
+
+    // 保存到任务模板列表
+    const templates = store.getTaskTemplates(childId);
+    // 通过 store 内部添加（因为没有公开方法，直接操作）
+    store.taskTemplates.push(newTemplate);
+    store.save();
+
+    // 为今天创建实例
+    if (!store.taskInstances[todayStr]) {
+      store.taskInstances[todayStr] = [];
+    }
+    const instance = {
+      id: 'instance_' + todayStr + '_' + newTemplate.id,
+      templateId: newTemplate.id,
+      childId: childId,
+      date: todayStr,
+      status: 'pending',
+      completedPercentage: 0,
+      pointsEarned: 0,
+      carryOver: false,
+      note: '手动添加'
+    };
+    store.taskInstances[todayStr].push(instance);
+    store.save();
+
+    // 重置表单
+    document.getElementById('add-task-name').value = '';
+    document.getElementById('add-task-duration').value = '20';
+    document.getElementById('add-task-points').value = '5';
+
+    closeAddModal();
+    app.toast(`已添加任务「${name}」`);
+
+    // 如果当前显示的是这个孩子，刷新列表
+    if (currentChild === childId) {
+      renderTasks();
+    } else {
+      switchChild(childId);
+    }
+  };
+
+  window.markTask = function(instanceId, percentage) {
+    const instance = store.getTaskInstanceById(instanceId);
+    if (!instance) return;
+    const template = store.getTaskTemplateById(instance.templateId);
+
+    if (percentage === 0) {
+      store.markIncomplete(instanceId);
+      app.toast('已标记未完成，明天顺延');
+    } else {
+      store.markComplete(instanceId, percentage);
+      const points = percentage >= 1 ? template.points : Math.round(template.points * 0.5);
+      app.toast(`完成！+${points}分 ⭐`);
+    }
+    store.save();
+    closeModal();
+    renderChildTabs();
+    renderTasks();
+  };
+
+  // 点击遮罩关闭
+  document.getElementById('task-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+  document.getElementById('add-task-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeAddModal();
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#3b82f6">
+  <title>分班考冲刺 - 暑假学习管家</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-container">
+
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-xl font-bold text-gray-800">⚡ 分班考冲刺</h1>
+    <p class="text-sm text-gray-500" id="today-date"></p>
+  </div>
+
+  <!-- 倒计时大卡片 -->
+  <div class="countdown-box mb-4">
+    <p class="text-sm opacity-90">距离8月24日分班考</p>
+    <div class="flex items-end justify-center gap-2 mt-2">
+      <span class="countdown-number" id="sprint-days" style="font-size:64px;">--</span>
+      <span class="text-xl mb-3">天</span>
+    </div>
+    <div class="flex justify-center gap-4 mt-3 text-xs opacity-90">
+      <div><span id="sprint-weeks" class="font-bold text-lg">--</span> 周</div>
+      <div>·</div>
+      <div><span id="sprint-days-left" class="font-bold text-lg">--</span> 天学习</div>
+    </div>
+  </div>
+
+  <!-- 冲刺进度条 -->
+  <div class="card mb-4">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-sm font-bold text-gray-700">📊 冲刺进度</h3>
+      <span class="text-xs text-gray-400" id="sprint-progress-text">0%</span>
+    </div>
+    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+      <div id="sprint-progress-bar" class="h-full rounded-full transition-all duration-500"
+        style="width:0%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);"></div>
+    </div>
+    <p class="text-xs text-gray-400 mt-2" id="sprint-progress-detail"></p>
+  </div>
+
+  <!-- 今日冲刺重点 -->
+  <h2 class="text-base font-bold text-gray-700 mb-2">🎯 今日冲刺重点</h2>
+  <div id="sprint-tasks"></div>
+
+  <!-- 数学专项（哥哥最弱） -->
+  <div class="card mt-4" style="background:linear-gradient(135deg,#dbeafe,#eff6ff);border:1px solid #bfdbfe;">
+    <h3 class="text-sm font-bold text-blue-800 mb-2">📐 数学专项强化</h3>
+    <div class="space-y-2" id="math-focus">
+      <div class="flex items-start gap-2">
+        <span class="text-blue-500">▸</span>
+        <div>
+          <p class="text-sm text-blue-700 font-medium">计算能力</p>
+          <p class="text-xs text-blue-500">猿辅导天天练 + 分班考计算题（每天15分钟）</p>
+        </div>
+      </div>
+      <div class="flex items-start gap-2">
+        <span class="text-blue-500">▸</span>
+        <div>
+          <p class="text-sm text-blue-700 font-medium">应用题</p>
+          <p class="text-xs text-blue-500">一本牌数学暑假练习册（每天30分钟，启动难需鼓励）</p>
+        </div>
+      </div>
+      <div class="flex items-start gap-2">
+        <span class="text-blue-500">▸</span>
+        <div>
+          <p class="text-sm text-blue-700 font-medium">AI家教专项</p>
+          <p class="text-xs text-blue-500">分班考冲刺专项练习（AI家教生成，每天30分钟，15分高激励）</p>
+        </div>
+      </div>
+      <div class="flex items-start gap-2">
+        <span class="text-blue-500">▸</span>
+        <div>
+          <p class="text-sm text-blue-700 font-medium">思维拓展</p>
+          <p class="text-xs text-blue-500">24点/数独/七巧板（每天10分钟，轻松有趣）</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 每日选择建议 -->
+  <h2 class="text-base font-bold text-gray-700 mt-4 mb-2">🤔 给孩子的选择建议</h2>
+  <p class="text-xs text-gray-400 mb-2">打电话时，给孩子2-3个选项让他自己选</p>
+  <div id="suggestions-list"></div>
+
+  <!-- 冲刺时间线 -->
+  <h2 class="text-base font-bold text-gray-700 mt-4 mb-2">📅 冲刺时间线</h2>
+  <div class="card">
+    <div class="timeline" id="sprint-timeline"></div>
+  </div>
+
+</div>
+
+<!-- 底部导航 -->
+<div id="bottom-nav"></div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+(function() {
+  const store = SSMStore;
+  const app = SSMApp;
+
+  function init() {
+    document.getElementById('today-date').textContent = app.formatDate(app.todayStr());
+    renderCountdown();
+    renderProgress();
+    renderSprintTasks();
+    renderSuggestions();
+    renderTimeline();
+    app.injectNav();
+  }
+
+  function renderCountdown() {
+    const days = store.getExamCountdown();
+    const box = document.querySelector('.countdown-box');
+
+    if (days === null) {
+      // 未设置考试日期：长期计划模式
+      box.innerHTML = `
+        <p class="text-sm opacity-90">分班考冲刺（长期计划模式）</p>
+        <div class="flex items-center justify-center gap-2 mt-2">
+          <span class="countdown-number" style="font-size:48px;">∞</span>
+        </div>
+        <p class="text-xs opacity-75 mt-2">未设置考试日期 · 去设置页可开启倒计时</p>
+      `;
+      return;
+    }
+
+    document.getElementById('sprint-days').textContent = days;
+    document.getElementById('sprint-weeks').textContent = Math.floor(days / 7);
+    document.getElementById('sprint-days-left').textContent = days;
+
+    if (days <= 0) {
+      box.innerHTML = `
+        <p class="text-lg">考试已结束！💪</p>
+      `;
+    }
+  }
+
+  function renderProgress() {
+    // 暑假开始 7/15，考试日期动态读取，计算已过进度
+    const startDate = '2026-07-15';
+    const brotherInfo = store.getChildById('brother');
+    const examDate = (brotherInfo && brotherInfo.examDate) || '2026-08-24';
+    const today = app.todayStr();
+    const totalDays = app.daysBetween(startDate, examDate);
+    const passedDays = app.daysBetween(startDate, today);
+    const progress = Math.max(0, Math.min(1, passedDays / totalDays));
+
+    document.getElementById('sprint-progress-bar').style.width = (progress * 100) + '%';
+    document.getElementById('sprint-progress-text').textContent = Math.round(progress * 100) + '%';
+    document.getElementById('sprint-progress-detail').textContent =
+      `已过 ${passedDays} 天 / 共 ${totalDays} 天 · 剩余 ${totalDays - passedDays} 天`;
+  }
+
+  function renderSprintTasks() {
+    const container = document.getElementById('sprint-tasks');
+    const tasks = store.getTodayTasks('brother');
+
+    // 冲刺重点：数学相关 + 高分任务
+    const sprintTasks = tasks.filter(t => {
+      const template = store.getTaskTemplateById(t.templateId);
+      if (!template) return false;
+      return template.subject === 'math' || template.points >= 12 || template.hardToStart;
+    });
+
+    if (sprintTasks.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>今日冲刺任务都完成了！</p></div>';
+      return;
+    }
+
+    let html = '';
+    sprintTasks.forEach(instance => {
+      const template = store.getTaskTemplateById(instance.templateId);
+      if (!template) return;
+      const status = instance.status;
+      let statusHtml = '';
+      if (status === 'completed') statusHtml = '<span class="tag" style="background:#dcfce7;color:#166534;">✓完成</span>';
+      else if (status === 'partial') statusHtml = '<span class="tag" style="background:#fef3c7;color:#92400e;">◐部分</span>';
+      else statusHtml = '<span class="tag" style="background:#fee2e2;color:#991b1b;">待完成</span>';
+
+      html += `
+        <div class="task-item ${status === 'completed' ? 'completed' : status === 'partial' ? 'partial' : ''}">
+          <div class="flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-sm font-medium text-gray-800">${template.name}</span>
+              ${app.subjectTag(template.subject)}
+              ${statusHtml}
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="text-xs text-gray-400">${template.duration || 0}分钟</span>
+              <span class="text-xs text-blue-500 font-bold">${template.points}分</span>
+              ${template.hardToStart ? '<span class="tag tag-hard">启动难</span>' : ''}
+            </div>
+          </div>
+          <a href="tasks.html?child=brother" class="btn btn-sm btn-outline">去完成</a>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  function renderSuggestions() {
+    const container = document.getElementById('suggestions-list');
+    const slot = app.currentTimeSlot();
+    const suggestions = store.getSuggestions('brother', slot);
+
+    if (!suggestions || suggestions.length === 0) {
+      container.innerHTML = '<div class="card"><p class="text-sm text-gray-500">暂无建议，所有任务都完成了！🎉</p></div>';
+      return;
+    }
+
+    let html = '';
+    suggestions.slice(0, 3).forEach((s, i) => {
+      const name = s.template ? s.template.name : '未知任务';
+      const pts = s.template ? s.template.points : 0;
+      const dur = s.template ? (s.template.duration || 0) : 0;
+      const subject = s.template ? s.template.subject : '';
+      html += `
+        <div class="suggestion-option">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">${String.fromCharCode(65 + i)}</span>
+            <span class="text-sm font-medium text-gray-800">${name}</span>
+            ${app.subjectTag(subject)}
+          </div>
+          <p class="text-xs text-gray-500 ml-8">${dur}分钟 · 可获得 ${pts} 积分</p>
+        </div>
+      `;
+    });
+
+    // 加上通用建议
+    html += `
+      <div class="card mt-2" style="background:#fef9c3;border:1px solid #fde68a;">
+        <p class="text-xs text-yellow-800">💡 话术：不是"去做XX"，而是"你想先做A还是B？"——给他选择权</p>
+      </div>
+    `;
+
+    container.innerHTML = html;
+  }
+
+  function renderTimeline() {
+    const container = document.getElementById('sprint-timeline');
+    const milestones = [
+      { date: '7/15-7/20', title: '暑假启动期', desc: '建立每日学习习惯，适应节奏', done: app.daysBetween('2026-07-15', app.todayStr()) > 5 },
+      { date: '7/21-7/27', title: '数学基础强化', desc: '一本牌数学+猿辅导天天练+AI家教专项', done: app.daysBetween('2026-07-15', app.todayStr()) > 12 },
+      { date: '7/28-8/3', title: '猿辅导数学预习', desc: '7/16-7/27猿辅导数学预习课', done: app.daysBetween('2026-07-15', app.todayStr()) > 19 },
+      { date: '7/30-8/10', title: '英语网课期', desc: '英语上午网课，篮球暂停，全力英语', done: app.daysBetween('2026-07-15', app.todayStr()) > 26 },
+      { date: '8/11-8/17', title: '综合复习期', desc: '三科均衡复习，查漏补缺', done: app.daysBetween('2026-07-15', app.todayStr()) > 33 },
+      { date: '8/18-8/23', title: '考前冲刺周', desc: '模拟卷+错题回顾+心态调整', done: app.daysBetween('2026-07-15', app.todayStr()) > 40 },
+      { date: '8/24', title: '分班考！', desc: '加油！💪', done: false, isExam: true }
+    ];
+
+    let html = '';
+    milestones.forEach(m => {
+      let cls = '';
+      if (m.isExam) cls = '';
+      else if (m.done) cls = 'completed';
+      html += `
+        <div class="timeline-item ${cls}">
+          <p class="text-xs text-gray-400">${m.date}</p>
+          <p class="text-sm font-medium ${m.isExam ? 'text-red-600' : 'text-gray-800'}">${m.title}</p>
+          <p class="text-xs text-gray-500">${m.desc}</p>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

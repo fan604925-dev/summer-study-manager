@@ -1,0 +1,565 @@
+/* ============================================================
+ * 暑假学习管家 - 全局样式
+ * 配合 Tailwind CSS 使用，补充自定义组件样式
+ * ============================================================ */
+
+/* -------- 基础重置 -------- */
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background-color: #f0f4f8;
+  color: #1a202c;
+  margin: 0;
+  padding: 0;
+  overscroll-behavior-y: contain;
+}
+
+/* -------- 底部导航栏 -------- */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 56px;
+  z-index: 100;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.bottom-nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 100%;
+  text-decoration: none;
+  color: #a0aec0;
+  font-size: 11px;
+  gap: 2px;
+  transition: color 0.2s;
+}
+
+.bottom-nav a.active {
+  color: #3b82f6;
+}
+
+.bottom-nav a .nav-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* -------- 页面容器 -------- */
+.page-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px;
+  padding-bottom: 72px;
+  min-height: 100vh;
+}
+
+/* -------- 卡片 -------- */
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  margin-bottom: 12px;
+}
+
+.card-tap {
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.card-tap:active {
+  transform: scale(0.98);
+}
+
+/* -------- 孩子卡片 -------- */
+.child-card {
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.child-card-brother {
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+  border: 1px solid #bfdbfe;
+}
+
+.child-card-little {
+  background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%);
+  border: 1px solid #fde68a;
+}
+
+/* -------- 进度环 -------- */
+.progress-ring {
+  width: 60px;
+  height: 60px;
+  position: relative;
+}
+
+.progress-ring svg {
+  transform: rotate(-90deg);
+}
+
+.progress-ring .progress-bg {
+  stroke: #e2e8f0;
+}
+
+.progress-ring .progress-fill {
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.progress-ring .progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* -------- 任务项 -------- */
+.task-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  background: #f7fafc;
+  transition: background 0.2s;
+}
+
+.task-item.completed {
+  background: #f0fdf4;
+  opacity: 0.75;
+}
+
+.task-item.partial {
+  background: #fffbeb;
+}
+
+.task-item.skipped {
+  background: #fef2f2;
+  opacity: 0.6;
+}
+
+.task-item.carry-over {
+  border-left: 3px solid #f59e0b;
+}
+
+/* -------- 复选框 -------- */
+.task-checkbox {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.task-checkbox.checked {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #fff;
+}
+
+.task-checkbox.partial {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #fff;
+}
+
+/* -------- 标签 -------- */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.tag-math { background: #dbeafe; color: #1e40af; }
+.tag-chinese { background: #fef3c7; color: #92400e; }
+.tag-english { background: #dcfce7; color: #166534; }
+.tag-other { background: #f3e8ff; color: #6b21a8; }
+.tag-hard { background: #fee2e2; color: #991b1b; }
+.tag-flexible { background: #e0e7ff; color: #3730a3; }
+
+/* -------- 积分数字 -------- */
+.points-display {
+  font-size: 32px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* -------- 倒计时 -------- */
+.countdown-box {
+  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+  border-radius: 16px;
+  padding: 20px;
+  color: #fff;
+  text-align: center;
+}
+
+.countdown-number {
+  font-size: 48px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* -------- 按钮 -------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.btn-primary:active {
+  background: #2563eb;
+}
+
+.btn-success {
+  background: #22c55e;
+  color: #fff;
+}
+
+.btn-warning {
+  background: #f59e0b;
+  color: #fff;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid #cbd5e0;
+  color: #4a5568;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* -------- 时间线 -------- */
+.timeline {
+  position: relative;
+  padding-left: 24px;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e2e8f0;
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 16px;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.timeline-item.activity::before {
+  background: #f59e0b;
+  box-shadow: 0 0 0 2px #f59e0b;
+}
+
+.timeline-item.completed::before {
+  background: #22c55e;
+  box-shadow: 0 0 0 2px #22c55e;
+}
+
+/* -------- 提醒卡片 -------- */
+.reminder-card {
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.reminder-morning { background: #fef9c3; border-left: 4px solid #eab308; }
+.reminder-noon { background: #dbeafe; border-left: 4px solid #3b82f6; }
+.reminder-afternoon { background: #fce7f3; border-left: 4px solid #ec4899; }
+.reminder-evening { background: #e0e7ff; border-left: 4px solid #6366f1; }
+
+.reminder-card .reminder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  cursor: pointer;
+}
+
+.reminder-card .reminder-tasks {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(0,0,0,0.08);
+  display: none;
+}
+
+.reminder-card.expanded .reminder-tasks {
+  display: block;
+}
+
+.reminder-card .reminder-task-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.reminder-card .reminder-task-item:last-child {
+  margin-bottom: 0;
+}
+
+.reminder-card .reminder-task-name {
+  color: #374151;
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+.reminder-card .reminder-task-meta {
+  color: #6b7280;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.reminder-card .expand-icon {
+  font-size: 12px;
+  color: #9ca3af;
+  transition: transform 0.2s;
+}
+
+.reminder-card.expanded .expand-icon {
+  transform: rotate(180deg);
+}
+
+/* -------- 浮动添加按钮 -------- */
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: 76px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.fab:active {
+  transform: scale(0.92);
+}
+
+/* -------- 表单输入 -------- */
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  background: #fff;
+  margin-top: 4px;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-content {
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 20px;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* -------- 动画 -------- */
+@keyframes pointsPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+.points-pop {
+  animation: pointsPop 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+/* -------- 选择建议 -------- */
+.suggestion-option {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.suggestion-option:active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+/* -------- 奖励卡片 -------- */
+.reward-card {
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reward-available {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1px solid #86efac;
+}
+
+.reward-locked {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  opacity: 0.6;
+}
+
+.reward-redeemed {
+  background: #f0f0f0;
+  border: 1px solid #d1d5db;
+  opacity: 0.5;
+}
+
+/* -------- 空状态 -------- */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #a0aec0;
+}
+
+.empty-state .empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+/* -------- 滚动隐藏 -------- */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+/* -------- 响应式 -------- */
+@media (min-width: 640px) {
+  .page-container {
+    padding: 24px;
+  }
+}

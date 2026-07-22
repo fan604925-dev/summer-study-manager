@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#3b82f6">
+  <title>设置 - 暑假学习管家</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-container">
+
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-xl font-bold text-gray-800">⚙️ 设置</h1>
+  </div>
+
+  <!-- 提醒时间 -->
+  <div class="card mb-3">
+    <h3 class="text-sm font-bold text-gray-700 mb-3">⏰ 提醒时间</h3>
+    <p class="text-xs text-gray-400 mb-3">设置4个手机闹钟时间（小程序不推送，用手机闹钟提醒）</p>
+    <div class="grid grid-cols-2 gap-3" id="reminder-times"></div>
+  </div>
+
+  <!-- 完成底线 -->
+  <div class="card mb-3">
+    <h3 class="text-sm font-bold text-gray-700 mb-3">📊 每日完成底线</h3>
+    <p class="text-xs text-gray-400 mb-3">低于此比例的任务将顺延到次日</p>
+    <div class="flex items-center gap-3">
+      <input type="range" min="30" max="100" step="10" value="60" id="baseline-slider"
+        class="flex-1" style="accent-color:#3b82f6;">
+      <span class="text-lg font-bold text-blue-600" id="baseline-value">60%</span>
+    </div>
+  </div>
+
+  <!-- 番茄钟设置 -->
+  <div class="card mb-3">
+    <h3 class="text-sm font-bold text-gray-700 mb-3">🍅 番茄钟时长</h3>
+    <div class="flex items-center gap-3">
+      <div class="flex-1">
+        <label class="text-xs text-gray-400">学习时长（分钟）</label>
+        <input type="number" min="10" max="45" value="15" id="pomodoro-input"
+          class="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm">
+      </div>
+      <div class="flex-1">
+        <label class="text-xs text-gray-400">休息时长（分钟）</label>
+        <input type="number" min="3" max="15" value="5" id="break-input"
+          class="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm">
+      </div>
+    </div>
+  </div>
+
+  <!-- 分班考倒计时 -->
+  <div class="card mb-3">
+    <h3 class="text-sm font-bold text-gray-700 mb-3">⚡ 分班考倒计时</h3>
+    <p class="text-xs text-gray-400 mb-3">设置哥哥分班考日期。留空可关闭倒计时（长期计划模式，适合日常一直用）。</p>
+    <div class="flex items-center gap-3">
+      <div class="flex-1">
+        <label class="text-xs text-gray-400">考试日期</label>
+        <input type="date" id="exam-date-input"
+          class="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm">
+      </div>
+      <button onclick="clearExamDate()" class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#fecaca;margin-top:18px;">
+        关闭倒计时
+      </button>
+    </div>
+  </div>
+
+  <!-- 孩子信息 -->
+  <h3 class="text-sm font-bold text-gray-700 mb-2 mt-4">👶 孩子信息</h3>
+  <div id="children-info"></div>
+
+  <!-- 固定活动 -->
+  <h3 class="text-sm font-bold text-gray-700 mb-2 mt-4">📅 固定活动</h3>
+  <div id="activities-list"></div>
+
+  <!-- 奖励库 -->
+  <h3 class="text-sm font-bold text-gray-700 mb-2 mt-4">🎁 奖励库</h3>
+  <div id="rewards-config"></div>
+
+  <!-- 数据管理 -->
+  <h3 class="text-sm font-bold text-gray-700 mb-2 mt-4">💾 数据管理</h3>
+  <div class="card">
+    <div class="space-y-2">
+      <button onclick="exportData()" class="btn btn-outline w-full">
+        📤 导出数据（JSON备份）
+      </button>
+      <button onclick="importData()" class="btn btn-outline w-full" style="color:#10b981;border-color:#a7f3d0;">
+        📥 导入数据（从备份恢复）
+      </button>
+      <input type="file" id="import-file" accept="application/json,.json" style="display:none;" onchange="handleImportFile(this)">
+      <button onclick="resetData()" class="btn btn-outline w-full" style="color:#ef4444;border-color:#fecaca;">
+        🗑️ 重置全部数据（恢复默认）
+      </button>
+      <button onclick="clearCacheAndReload()" class="btn btn-outline w-full" style="color:#3b82f6;border-color:#bfdbfe;">
+        🔄 清除缓存并刷新（解决界面不更新）
+      </button>
+    </div>
+    <p class="text-xs text-gray-400 mt-3">
+      ⚠️ <b>重要：数据跟着"链接"走</b>。本应用存在浏览器本地，不同的访问网址（链接）是互相隔离的，换链接数据不会自动跟随。请<b>固定用同一个链接</b>，并「添加到主屏幕」当作 App 用。换手机或换链接前，先点「导出数据」备份，再到新链接「导入数据」恢复。
+    </p>
+  </div>
+
+  <!-- 关于 -->
+  <div class="card mt-4 text-center">
+    <p class="text-sm text-gray-500">暑假学习管家 v1.0</p>
+    <p class="text-xs text-gray-400 mt-1">家长专用 · 孩子零手机 · 帮你执行到位</p>
+  </div>
+
+</div>
+
+<!-- 底部导航 -->
+<div id="bottom-nav"></div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+(function() {
+  const store = SSMStore;
+  const app = SSMApp;
+
+  function init() {
+    renderReminderTimes();
+    renderBaseline();
+    renderPomodoro();
+    renderExamDate();
+    renderChildrenInfo();
+    renderActivities();
+    renderRewardsConfig();
+    app.injectNav();
+  }
+
+  function renderExamDate() {
+    const brother = store.getChildById('brother');
+    const input = document.getElementById('exam-date-input');
+    if (!input) return;
+    input.value = (brother && brother.examDate) || '';
+    input.addEventListener('change', function() {
+      store.setExamDate(this.value);
+      app.toast(this.value ? '考试日期已更新' : '已关闭倒计时');
+    });
+  }
+
+  window.clearExamDate = function() {
+    store.setExamDate('');
+    document.getElementById('exam-date-input').value = '';
+    app.toast('已关闭倒计时（长期计划模式）');
+  };
+
+  function renderReminderTimes() {
+    const times = (store.settings && store.settings.reminderTimes) || ['07:00', '10:00', '12:00', '16:00'];
+    const labels = ['早间计划', '给选择建议', '中午跟进', '下午提醒'];
+    const icons = ['🌅', '📞', '🍽️', '☀️'];
+    const container = document.getElementById('reminder-times');
+    container.innerHTML = times.map((t, i) => `
+      <div class="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+        <span style="font-size:20px;">${icons[i]}</span>
+        <div class="flex-1">
+          <p class="text-xs text-gray-400">${labels[i]}</p>
+          <input type="time" value="${t}" onchange="updateReminderTime(${i}, this.value)"
+            class="text-sm font-medium bg-transparent border-none outline-none">
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderBaseline() {
+    const baseline = (store.settings && store.settings.completionBaseline) || 0.6;
+    const slider = document.getElementById('baseline-slider');
+    const value = document.getElementById('baseline-value');
+    slider.value = baseline * 100;
+    value.textContent = Math.round(baseline * 100) + '%';
+    slider.addEventListener('input', function() {
+      value.textContent = this.value + '%';
+    });
+    slider.addEventListener('change', function() {
+      store.settings = store.settings || {};
+      store.settings.completionBaseline = this.value / 100;
+      store.save();
+      app.toast('底线已更新为 ' + this.value + '%');
+    });
+  }
+
+  function renderPomodoro() {
+    const settings = store.settings || {};
+    document.getElementById('pomodoro-input').value = settings.pomodoroMinutes || 15;
+    document.getElementById('break-input').value = settings.breakMinutes || 5;
+
+    document.getElementById('pomodoro-input').addEventListener('change', function() {
+      store.settings = store.settings || {};
+      store.settings.pomodoroMinutes = parseInt(this.value);
+      store.save();
+      app.toast('学习时长已更新');
+    });
+    document.getElementById('break-input').addEventListener('change', function() {
+      store.settings = store.settings || {};
+      store.settings.breakMinutes = parseInt(this.value);
+      store.save();
+      app.toast('休息时长已更新');
+    });
+  }
+
+  function renderChildrenInfo() {
+    const children = store.getChildren();
+    const container = document.getElementById('children-info');
+    container.innerHTML = children.map(c => `
+      <div class="card" style="margin-bottom:8px;">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg"
+            style="background:${c.id === 'brother' ? '#3b82f6' : '#f59e0b'};">
+            ${c.name[0]}
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-bold text-gray-800">${c.name} · ${c.age}岁 · ${c.grade}</p>
+            <p class="text-xs text-gray-400">兴趣：${(c.interests || []).join('、')}</p>
+            ${c.examDate ? `<p class="text-xs text-red-500 mt-1">分班考：${c.examDate}</p>` : ''}
+            ${c.weakSubject ? `<p class="text-xs text-orange-500">薄弱科目：${c.weakSubject === 'math' ? '数学' : c.weakSubject}</p>` : ''}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderActivities() {
+    const activities = store.activities || [];
+    const container = document.getElementById('activities-list');
+    if (activities.length === 0) {
+      container.innerHTML = '<div class="card"><p class="text-sm text-gray-400">暂无固定活动</p></div>';
+      return;
+    }
+
+    const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+    container.innerHTML = activities.map(a => {
+      const child = store.getChildById(a.childId);
+      const childName = child ? child.name : (a.childId === 'both' ? '两孩子' : a.childId);
+      const days = (a.days || []).map(d => '周' + dayNames[d]).join('、') || '每天';
+      const dateRange = a.dateRange ? ` (${a.dateRange[0]}~${a.dateRange[1]})` : '';
+      return `
+        <div class="task-item" style="background:#f7fafc;">
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-gray-800">${a.name}</span>
+              <span class="tag tag-other">${childName}</span>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">${a.startTime}-${a.endTime} · ${days}${dateRange}</p>
+            ${a.note ? `<p class="text-xs text-blue-400 mt-1">${a.note}</p>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderRewardsConfig() {
+    const container = document.getElementById('rewards-config');
+    const children = store.getChildren();
+    let html = '';
+
+    children.forEach(child => {
+      const rewards = store.getRewards(child.id) || [];
+      html += `<div class="card mb-2"><p class="text-sm font-bold text-gray-700 mb-2">${child.name}的奖励库</p>`;
+      if (rewards.length === 0) {
+        html += '<p class="text-xs text-gray-400">暂无奖励</p>';
+      } else {
+        rewards.forEach(r => {
+          let icon = r.type === 'tv' ? '📺' : r.type === 'movie' ? '🎬' : r.type === 'privilege' ? '✨' : '🎈';
+          html += `
+            <div class="flex items-center justify-between py-1 border-b border-gray-50 last:border-0">
+              <span class="text-xs text-gray-600">${icon} ${r.name}</span>
+              <span class="text-xs text-blue-500 font-bold">${r.cost}分</span>
+            </div>
+          `;
+        });
+      }
+      html += '</div>';
+    });
+
+    container.innerHTML = html;
+  }
+
+  window.updateReminderTime = function(index, value) {
+    const times = (store.settings && store.settings.reminderTimes) || ['07:00', '10:00', '12:00', '16:00'];
+    times[index] = value;
+    store.settings = store.settings || {};
+    store.settings.reminderTimes = times;
+    store.save();
+    app.toast('提醒时间已更新');
+  };
+
+  window.exportData = function() {
+    const data = store.exportData();
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `暑假学习管家_备份_${app.todayStr()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    app.toast('数据已导出，请妥善保存');
+  };
+
+  window.importData = function() {
+    document.getElementById('import-file').click();
+  };
+
+  window.handleImportFile = function(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (!data || typeof data !== 'object') throw new Error('格式错误');
+        if (store.importData(data)) {
+          app.toast('数据导入成功，正在刷新');
+          setTimeout(() => location.reload(), 1000);
+        } else {
+          app.toast('导入失败，请检查文件');
+        }
+      } catch (err) {
+        app.toast('文件格式错误，无法导入');
+      }
+    };
+    reader.onerror = function() { app.toast('读取文件失败'); };
+    reader.readAsText(file);
+    input.value = '';
+  };
+
+  window.resetData = function() {
+    if (!app.confirm('⚠️ 确定要重置全部数据吗？\n\n所有任务进度、积分记录都将被清除，恢复到默认状态。\n\n建议先导出备份！')) return;
+    if (!app.confirm('再次确认：这将清除所有数据，不可恢复！')) return;
+    store.clearData();
+    app.toast('数据已重置');
+    setTimeout(() => location.reload(), 1000);
+  };
+
+  window.clearCacheAndReload = function() {
+    if (!app.confirm('🔄 清除 Service Worker 缓存并刷新页面？\n\n可解决「界面不更新、任务消失」等问题，不会删除任务进度和积分。')) return;
+    app.clearCacheAndReload();
+  };
+
+  init();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#3b82f6">
+  <title>统计 - 暑假学习管家</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-container">
+
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-xl font-bold text-gray-800">📊 统计分析</h1>
+    <p class="text-sm text-gray-500" id="today-date"></p>
+  </div>
+
+  <!-- 孩子切换 -->
+  <div class="scroll-x mb-3">
+    <div class="flex gap-2" id="child-tabs" style="display:inline-flex;"></div>
+  </div>
+
+  <!-- 完成率概览 -->
+  <div class="grid grid-cols-2 gap-3 mb-4">
+    <div class="card text-center" style="margin-bottom:0;">
+      <p class="text-xs text-gray-400">今日完成率</p>
+      <p class="text-2xl font-bold" id="today-rate">0%</p>
+      <p class="text-xs text-gray-400 mt-1" id="today-detail"></p>
+    </div>
+    <div class="card text-center" style="margin-bottom:0;">
+      <p class="text-xs text-gray-400">本周完成率</p>
+      <p class="text-2xl font-bold" id="week-rate">0%</p>
+      <p class="text-xs text-gray-400 mt-1" id="week-detail"></p>
+    </div>
+  </div>
+
+  <!-- 60%底线提醒 -->
+  <div class="card mb-4" id="baseline-card">
+    <div class="flex items-center gap-3">
+      <div style="font-size:32px;" id="baseline-icon">✅</div>
+      <div class="flex-1">
+        <p class="text-sm font-bold" id="baseline-title">今日达标</p>
+        <p class="text-xs text-gray-500" id="baseline-desc">完成率超过60%底线</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 本周完成趋势图 -->
+  <div class="card mb-4">
+    <h3 class="text-sm font-bold text-gray-700 mb-3">📈 本周完成趋势</h3>
+    <canvas id="week-chart" height="160"></canvas>
+  </div>
+
+  <!-- 积分趋势图 -->
+  <div class="card mb-4">
+    <h3 class="text-sm font-bold text-gray-700 mb-3">⭐ 积分累积</h3>
+    <canvas id="points-chart" height="160"></canvas>
+  </div>
+
+  <!-- 科目分布 -->
+  <div class="card mb-4">
+    <h3 class="text-sm font-bold text-gray-700 mb-3">📚 科目完成分布</h3>
+    <canvas id="subject-chart" height="160"></canvas>
+  </div>
+
+  <!-- 周报 -->
+  <h2 class="text-base font-bold text-gray-700 mb-2">📝 本周报告</h2>
+  <div id="weekly-report"></div>
+
+  <!-- 总是完不成的任务 -->
+  <h2 class="text-base font-bold text-gray-700 mt-4 mb-2">⚠️ 需要关注</h2>
+  <div id="attention-tasks"></div>
+
+</div>
+
+<!-- 底部导航 -->
+<div id="bottom-nav"></div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+(function() {
+  const store = SSMStore;
+  const app = SSMApp;
+  let currentChild = 'brother';
+  let charts = {};
+
+  function init() {
+    document.getElementById('today-date').textContent = app.formatDate(app.todayStr());
+    renderChildTabs();
+    renderStats();
+    app.injectNav();
+  }
+
+  function renderChildTabs() {
+    const children = store.getChildren();
+    const container = document.getElementById('child-tabs');
+    container.innerHTML = children.map(c => {
+      const active = c.id === currentChild;
+      const points = store.getPoints(c.id);
+      return `<button onclick="switchChild('${c.id}')" class="btn btn-sm ${active ? 'btn-primary' : 'btn-outline'}">${c.name} ⭐${points}</button>`;
+    }).join('');
+  }
+
+  function renderStats() {
+    renderOverview();
+    renderBaseline();
+    renderWeekChart();
+    renderPointsChart();
+    renderSubjectChart();
+    renderWeeklyReport();
+    renderAttentionTasks();
+  }
+
+  function renderOverview() {
+    // 今日
+    const todayTasks = store.getTodayTasks(currentChild);
+    const todayCompleted = todayTasks.filter(t => t.status === 'completed').length;
+    const todayPartial = todayTasks.filter(t => t.status === 'partial').length;
+    const todayTotal = todayTasks.length;
+    const todayRate = todayTotal > 0 ? (todayCompleted + todayPartial * 0.5) / todayTotal : 0;
+    document.getElementById('today-rate').textContent = Math.round(todayRate * 100) + '%';
+    document.getElementById('today-detail').textContent = `${todayCompleted}完成 / ${todayTotal}总`;
+
+    // 本周
+    const weekStats = store.getWeeklyStats(currentChild);
+    const weekRate = weekStats.total > 0 ? (weekStats.completed + weekStats.partial * 0.5) / weekStats.total : 0;
+    document.getElementById('week-rate').textContent = Math.round(weekRate * 100) + '%';
+    document.getElementById('week-detail').textContent = `${weekStats.completed}完成 / ${weekStats.total}总`;
+  }
+
+  function renderBaseline() {
+    const todayTasks = store.getTodayTasks(currentChild);
+    const completed = todayTasks.filter(t => t.status === 'completed').length;
+    const partial = todayTasks.filter(t => t.status === 'partial').length;
+    const total = todayTasks.length;
+    const rate = total > 0 ? (completed + partial * 0.5) / total : 0;
+    const baseline = (store.settings && store.settings.completionBaseline) || 0.6;
+
+    const card = document.getElementById('baseline-card');
+    const icon = document.getElementById('baseline-icon');
+    const title = document.getElementById('baseline-title');
+    const desc = document.getElementById('baseline-desc');
+
+    if (total === 0) {
+      card.style.background = '#f7fafc';
+      icon.textContent = '📋';
+      title.textContent = '今日无任务';
+      desc.textContent = '还没有安排任务';
+    } else if (rate >= baseline) {
+      card.style.background = '#f0fdf4';
+      card.style.border = '1px solid #bbf7d0';
+      icon.textContent = '✅';
+      title.textContent = '今日达标！';
+      desc.textContent = `完成率 ${Math.round(rate * 100)}%，超过 ${Math.round(baseline * 100)}% 底线`;
+    } else {
+      card.style.background = '#fef2f2';
+      card.style.border = '1px solid #fecaca';
+      icon.textContent = '⚠️';
+      title.textContent = '今日未达标';
+      desc.textContent = `完成率 ${Math.round(rate * 100)}%，低于 ${Math.round(baseline * 100)}% 底线，未完成任务明天顺延`;
+    }
+  }
+
+  function renderWeekChart() {
+    const ctx = document.getElementById('week-chart');
+    if (charts.week) charts.week.destroy();
+
+    // 获取过去7天的完成率
+    const labels = [];
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      const week = ['日', '一', '二', '三', '四', '五', '六'];
+      labels.push(`${d.getMonth() + 1}/${d.getDate()} 周${week[d.getDay()]}`);
+      const rateData = store.getDailyCompletionRate(currentChild, dateStr);
+      const rateVal = typeof rateData === 'object' ? (rateData.rate || 0) : rateData;
+      data.push(Math.round(rateVal * 100));
+    }
+
+    charts.week = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: '完成率(%)',
+          data: data,
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 4,
+          pointBackgroundColor: '#3b82f6'
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          annotation: {}
+        },
+        scales: {
+          y: { beginAtZero: true, max: 100, ticks: { color: '#a0aec0' } },
+          x: { ticks: { color: '#a0aec0', font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  function renderPointsChart() {
+    const ctx = document.getElementById('points-chart');
+    if (charts.points) charts.points.destroy();
+
+    const labels = [];
+    const data = [];
+    let cumulative = 0;
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+
+      // 获取当天获得的积分
+      const pointsData = store.points[currentChild] || { history: [] };
+      const dayPoints = (pointsData.history || []).filter(h => h.date === dateStr && h.type === 'earn').reduce((sum, h) => sum + h.amount, 0);
+      cumulative += dayPoints;
+      data.push(cumulative);
+    }
+
+    charts.points = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: '累计积分',
+          data: data,
+          backgroundColor: 'rgba(139,92,246,0.6)',
+          borderColor: '#8b5cf6',
+          borderWidth: 1,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { color: '#a0aec0' } },
+          x: { ticks: { color: '#a0aec0', font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  function renderSubjectChart() {
+    const ctx = document.getElementById('subject-chart');
+    if (charts.subject) charts.subject.destroy();
+
+    // 本周各科目完成数
+    const subjectCounts = { math: 0, chinese: 0, english: 0, other: 0 };
+    const todayTasks = store.getTodayTasks(currentChild);
+    todayTasks.forEach(t => {
+      const template = store.getTaskTemplateById(t.templateId);
+      if (template && t.status === 'completed') {
+        const s = template.subject || 'other';
+        subjectCounts[s] = (subjectCounts[s] || 0) + 1;
+      }
+    });
+
+    charts.subject = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['数学', '语文', '英语', '其他'],
+        datasets: [{
+          data: [subjectCounts.math, subjectCounts.chinese, subjectCounts.english, subjectCounts.other],
+          backgroundColor: ['#3b82f6', '#f59e0b', '#22c55e', '#a78bfa'],
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, color: '#4a5568' } } }
+      }
+    });
+  }
+
+  function renderWeeklyReport() {
+    const container = document.getElementById('weekly-report');
+    const stats = store.getWeeklyStats(currentChild);
+    const child = store.getChildById(currentChild);
+    const rate = stats.total > 0 ? (stats.completed + stats.partial * 0.5) / stats.total : 0;
+
+    let report = '';
+    report += `<div class="card">`;
+    report += `<div class="space-y-3">`;
+
+    // 完成率总结
+    if (rate >= 0.8) {
+      report += `<p class="text-sm">🎉 <b>${child.name}</b>本周表现优秀！完成率 ${Math.round(rate * 100)}%，继续保持！</p>`;
+    } else if (rate >= 0.6) {
+      report += `<p class="text-sm">✅ <b>${child.name}</b>本周达标，完成率 ${Math.round(rate * 100)}%。还有提升空间。</p>`;
+    } else {
+      report += `<p class="text-sm">⚠️ <b>${child.name}</b>本周完成率 ${Math.round(rate * 100)}%，低于60%底线，需要关注。</p>`;
+    }
+
+    // 积分
+    const points = store.getPoints(currentChild);
+    report += `<p class="text-sm">⭐ 本周累计积分 <b>${points}</b> 分</p>`;
+
+    // 建议
+    if (rate < 0.6) {
+      report += `<div class="p-3 bg-yellow-50 rounded-lg"><p class="text-xs text-yellow-700">💡 建议：检查任务量是否过多，适当减少低优先级任务，聚焦核心任务</p></div>`;
+    } else if (rate >= 0.8) {
+      report += `<div class="p-3 bg-green-50 rounded-lg"><p class="text-xs text-green-700">💡 建议：孩子状态很好，可以考虑庆祝一下！也可以适当增加挑战</p></div>`;
+    }
+
+    report += `</div></div>`;
+    container.innerHTML = report;
+  }
+
+  function renderAttentionTasks() {
+    const container = document.getElementById('attention-tasks');
+    const todayTasks = store.getTodayTasks(currentChild);
+    const pending = todayTasks.filter(t => t.status === 'pending');
+
+    // 找出启动难且未完成的
+    const hardPending = pending.filter(t => {
+      const template = store.getTaskTemplateById(t.templateId);
+      return template && template.hardToStart;
+    });
+
+    // 找出顺延的
+    const carryOver = todayTasks.filter(t => t.carryOver);
+
+    let html = '';
+
+    if (hardPending.length > 0) {
+      html += `<div class="card" style="background:#fef2f2;border:1px solid #fecaca;">`;
+      html += `<p class="text-sm font-bold text-red-700 mb-2">💪 启动难任务未完成</p>`;
+      hardPending.forEach(t => {
+        const template = store.getTaskTemplateById(t.templateId);
+        if (template) {
+          html += `<div class="flex items-center gap-2 mb-1"><span class="text-red-400">▸</span><span class="text-xs text-red-600">${template.name} (${template.points}分)</span></div>`;
+        }
+      });
+      html += `<p class="text-xs text-red-400 mt-2">建议：用"2分钟规则"帮助孩子启动</p>`;
+      html += `</div>`;
+    }
+
+    if (carryOver.length > 0) {
+      html += `<div class="card mt-2" style="background:#fffbeb;border:1px solid #fde68a;">`;
+      html += `<p class="text-sm font-bold text-yellow-700 mb-2">📋 顺延任务</p>`;
+      carryOver.forEach(t => {
+        const template = store.getTaskTemplateById(t.templateId);
+        if (template) {
+          html += `<div class="flex items-center gap-2 mb-1"><span class="text-yellow-400">▸</span><span class="text-xs text-yellow-600">${template.name}</span></div>`;
+        }
+      });
+      html += `</div>`;
+    }
+
+    if (!html) {
+      html = `<div class="card"><p class="text-sm text-gray-500">✅ 没有需要特别关注的任务</p></div>`;
+    }
+
+    container.innerHTML = html;
+  }
+
+  window.switchChild = function(id) {
+    currentChild = id;
+    renderChildTabs();
+    renderStats();
+  };
+
+  init();
+})();
+</script>
+</body>
+</html>

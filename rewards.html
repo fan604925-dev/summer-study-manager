@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#3b82f6">
+  <title>积分奖励 - 暑假学习管家</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-container">
+
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-xl font-bold text-gray-800">🎁 积分奖励</h1>
+    <p class="text-sm text-gray-500" id="today-date"></p>
+  </div>
+
+  <!-- 双孩子积分对比 -->
+  <div class="grid grid-cols-2 gap-3 mb-3">
+    <div class="card text-center py-3" id="brother-points-card" style="cursor:pointer;" onclick="switchChild('brother')">
+      <div class="flex items-center justify-center gap-1 mb-1">
+        <span style="font-size:20px;">⭐</span>
+        <span class="points-display" style="font-size:22px;" id="brother-points">0</span>
+      </div>
+      <p class="text-xs text-gray-500">哥哥积分</p>
+    </div>
+    <div class="card text-center py-3" id="little-points-card" style="cursor:pointer;" onclick="switchChild('little')">
+      <div class="flex items-center justify-center gap-1 mb-1">
+        <span style="font-size:20px;">⭐</span>
+        <span class="points-display" style="font-size:22px;" id="little-points">0</span>
+      </div>
+      <p class="text-xs text-gray-500">弟弟积分</p>
+    </div>
+  </div>
+
+  <!-- 当前选中孩子的积分详情 -->
+  <div class="card text-center mb-3" style="background:linear-gradient(135deg,#f0f4ff,#fff);border:1px solid #c7d2fe;">
+    <div class="flex items-center justify-center gap-2 mb-1">
+      <span style="font-size:28px;">🎁</span>
+      <span class="points-display" id="current-points">0</span>
+    </div>
+    <p class="text-sm text-gray-500" id="points-label">哥哥可兑换奖励</p>
+    <div class="mt-2 pt-2 border-t border-gray-100">
+      <p class="text-xs text-gray-400">累计获得 <span id="total-earned" class="font-bold text-gray-600">0</span> 分 · 已兑换 <span id="total-spent" class="font-bold text-gray-600">0</span> 分</p>
+    </div>
+  </div>
+
+  <!-- 孩子切换 Tab -->
+  <div class="flex bg-white rounded-xl p-1 mb-3 shadow-sm border border-gray-100">
+    <button id="tab-brother" onclick="switchChild('brother')" class="flex-1 py-2 text-sm font-medium rounded-lg transition-colors">哥哥奖励</button>
+    <button id="tab-little" onclick="switchChild('little')" class="flex-1 py-2 text-sm font-medium rounded-lg transition-colors">弟弟奖励</button>
+  </div>
+
+  <!-- 奖励科学提示 -->
+  <div class="card mb-3" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+    <p class="text-xs text-green-700 font-semibold mb-1">💡 奖励科学小贴士</p>
+    <p class="text-xs text-green-600" id="reward-tip">奖励努力，不奖励结果。用"庆祝"代替"交易"。不提前告诉孩子换什么——意外奖励增强内驱力。</p>
+  </div>
+
+  <!-- 可兑换奖励 -->
+  <h2 class="text-base font-bold text-gray-700 mb-2">🎉 可选庆祝方式</h2>
+  <div id="rewards-list"></div>
+
+  <!-- 已兑换记录 -->
+  <h2 class="text-base font-bold text-gray-700 mt-4 mb-2">📜 兑换记录</h2>
+  <div id="history-list"></div>
+
+</div>
+
+<!-- 底部导航 -->
+<div id="bottom-nav"></div>
+
+<!-- 兑换确认模态框 -->
+<div class="modal-overlay" id="reward-modal">
+  <div class="modal-content">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold">🎉 庆祝确认</h3>
+      <button onclick="closeRewardModal()" class="text-gray-400 text-xl">✕</button>
+    </div>
+    <div id="reward-modal-body"></div>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+(function() {
+  const store = SSMStore;
+  const app = SSMApp;
+  let currentChild = 'brother';
+
+  function init() {
+    document.getElementById('today-date').textContent = app.formatDate(app.todayStr());
+    renderChildTabs();
+    renderRewards();
+    app.injectNav();
+  }
+
+  function renderChildTabs() {
+    const children = store.getChildren();
+
+    // 更新顶部双孩子积分
+    children.forEach(c => {
+      const el = document.getElementById(`${c.id}-points`);
+      if (el) el.textContent = store.getPoints(c.id);
+    });
+
+    // 更新底部 Tab 样式
+    document.getElementById('tab-brother').className = currentChild === 'brother'
+      ? 'flex-1 py-2 text-sm font-medium rounded-lg bg-blue-500 text-white shadow-sm'
+      : 'flex-1 py-2 text-sm font-medium rounded-lg text-gray-500 hover:bg-gray-50';
+    document.getElementById('tab-little').className = currentChild === 'little'
+      ? 'flex-1 py-2 text-sm font-medium rounded-lg bg-pink-500 text-white shadow-sm'
+      : 'flex-1 py-2 text-sm font-medium rounded-lg text-gray-500 hover:bg-gray-50';
+
+    // 更新积分卡片边框
+    document.getElementById('brother-points-card').style.border = currentChild === 'brother' ? '2px solid #3b82f6' : '1px solid #e5e7eb';
+    document.getElementById('little-points-card').style.border = currentChild === 'little' ? '2px solid #ec4899' : '1px solid #e5e7eb';
+  }
+
+  function renderRewards() {
+    const child = store.getChildById(currentChild);
+    const points = store.getPoints(currentChild);
+    const rewards = store.getRewards(currentChild); // 获取全部奖励（含未解锁）
+
+    // 防御：如果当前孩子不存在，切换到第一个可用孩子
+    if (!child) {
+      const children = store.getChildren();
+      if (children.length > 0) {
+        currentChild = children[0].id;
+        renderChildTabs();
+        renderRewards();
+      } else {
+        document.getElementById('rewards-list').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>孩子信息加载失败</p><p class="text-xs mt-2">请返回首页或设置页重置数据</p></div>';
+      }
+      return;
+    }
+
+    // 积分展示
+    document.getElementById('current-points').textContent = points;
+    document.getElementById('points-label').textContent = `${child.name}当前积分`;
+
+    // 累计统计
+    const pointsData = store.getPointsSummary(currentChild);
+    document.getElementById('total-earned').textContent = pointsData.total || 0;
+    document.getElementById('total-spent').textContent = pointsData.spent || 0;
+
+    // 提示语随机
+    const tips = [
+      '奖励努力，不奖励结果。用"庆祝"代替"交易"。不提前告诉孩子换什么——意外奖励增强内驱力。',
+      '体验型奖励（出去玩、吃大餐、爬山）比物质奖励更有利于内驱力发展。',
+      '不说"做完给你X"，而是攒够积分后主动发起庆祝——这叫"意外奖励"。',
+      '奖励不愿意做的事（如数学），不奖励已经喜欢的事（如阅读）。',
+      '用"庆祝"的语气：不是"你赚到了"，而是"你最近特别努力，我们去庆祝一下！"'
+    ];
+    document.getElementById('reward-tip').textContent = tips[Math.floor(Math.random() * tips.length)];
+
+    // 奖励列表
+    const container = document.getElementById('rewards-list');
+    if (!rewards || rewards.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">🎁</div><p>暂无奖励配置</p><p class="text-xs mt-2">去设置页添加奖励</p></div>';
+      renderHistory();
+      return;
+    }
+
+    let html = '';
+    rewards.forEach((r, i) => {
+      const canAfford = points >= r.cost;
+      let cls = canAfford ? 'reward-available' : 'reward-locked';
+      const typeIcons = { privilege: '✨', small: '🍴', learning: '📺', medium: '🏔️', large: '🎢', xl: '🎉' };
+      let icon = typeIcons[r.type] || '🎈';
+      const typeLabels = { privilege: '特权', small: '小体验', learning: '学习型', medium: '中体验', large: '大体验', xl: '特大体验' };
+      let typeLabel = typeLabels[r.type] || '';
+
+      html += `
+        <div class="reward-card ${cls}">
+          <div class="flex items-center gap-3 flex-1">
+            <span style="font-size:24px;">${icon}</span>
+            <div>
+              <p class="text-sm font-medium ${canAfford ? 'text-gray-800' : 'text-gray-400'}">${r.name}</p>
+              <p class="text-xs text-gray-400">${r.cost} 积分${typeLabel ? ' · ' + typeLabel : ''}</p>
+            </div>
+          </div>
+          ${canAfford ? `<button onclick="openRewardModal(${i})" class="btn btn-sm btn-success">庆祝</button>` :
+            `<span class="tag" style="background:#fee2e2;color:#991b1b;">差${r.cost - points}分</span>`}
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const container = document.getElementById('history-list');
+    const pointsData = store.getPointsSummary(currentChild);
+    const history = (pointsData.history || []).filter(h => h.type === 'spend').reverse();
+
+    if (history.length === 0) {
+      container.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">还没有兑换记录</p>';
+      return;
+    }
+
+    let html = '';
+    history.slice(0, 10).forEach(h => {
+      html += `
+        <div class="task-item" style="background:#f7fafc;">
+          <div class="flex-1">
+            <p class="text-sm text-gray-700">${h.description || '兑换奖励'}</p>
+            <p class="text-xs text-gray-400">${h.date || ''}</p>
+          </div>
+          <span class="text-sm font-bold text-orange-500">-${h.amount}</span>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  window.switchChild = function(id) {
+    currentChild = id;
+    renderChildTabs();
+    renderRewards();
+  };
+
+  window.openRewardModal = function(rewardIndex) {
+    const rewards = store.getRewards(currentChild);
+    const r = rewards[rewardIndex];
+    if (!r) return;
+    const child = store.getChildById(currentChild);
+    const points = store.getPoints(currentChild);
+    const typeIcons = { privilege: '✨', small: '🍴', learning: '📺', medium: '🏔️', large: '🎢', xl: '🎉' };
+    let icon = typeIcons[r.type] || '🎈';
+
+    document.getElementById('reward-modal-body').innerHTML = `
+      <div class="text-center mb-4">
+        <div style="font-size:48px;">${icon}</div>
+        <h4 class="text-lg font-bold mt-2">${r.name}</h4>
+        <p class="text-sm text-gray-500 mt-1">${r.cost} 积分</p>
+      </div>
+
+      <div class="card" style="background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:12px;">
+        <p class="text-sm text-green-700 font-semibold">💬 庆祝话术建议</p>
+        <p class="text-xs text-green-600 mt-1">"${child.name}，你最近特别努力，每天都坚持做${child.id === 'brother' ? '数学' : '思维课'}，我们今天去${r.name}庆祝一下！"</p>
+        <p class="text-xs text-green-500 mt-1">⚠️ 不要说"你赚到了X"或"这是你换的"</p>
+      </div>
+
+      <p class="text-xs text-gray-400 mb-3">兑换后扣除 ${r.cost} 积分，剩余 ${points - r.cost} 积分</p>
+
+      <button onclick="confirmRedeem(${rewardIndex})" class="btn btn-success w-full">
+        确认庆祝！扣除 ${r.cost} 积分
+      </button>
+    `;
+    document.getElementById('reward-modal').classList.add('active');
+  };
+
+  window.closeRewardModal = function() {
+    document.getElementById('reward-modal').classList.remove('active');
+  };
+
+  window.confirmRedeem = function(rewardIndex) {
+    const result = store.redeemReward(currentChild, rewardIndex);
+    if (result) {
+      app.toast('🎉 庆祝成功！孩子会很开心的');
+      store.save();
+      closeRewardModal();
+      renderChildTabs();
+      renderRewards();
+    } else {
+      app.toast('积分不足或兑换失败');
+    }
+  };
+
+  document.getElementById('reward-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeRewardModal();
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>

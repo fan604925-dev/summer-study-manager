@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#3b82f6">
+  <title>暑假学习管家</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-container">
+
+  <!-- 顶部日期 -->
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <p class="text-sm text-gray-500" id="today-date"></p>
+      <h1 class="text-xl font-bold text-gray-800">暑假学习管家</h1>
+    </div>
+    <a href="settings.html" class="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm">
+      <span style="font-size:20px;">⚙️</span>
+    </a>
+  </div>
+
+  <!-- 分班考倒计时 -->
+  <div class="countdown-box mb-4" id="countdown-card">
+    <p class="text-sm opacity-90">哥哥初一分班考倒计时</p>
+    <div class="flex items-end justify-center gap-2 mt-1">
+      <span class="countdown-number" id="countdown-days">--</span>
+      <span class="text-lg mb-2">天</span>
+    </div>
+    <p class="text-xs opacity-75 mt-1" id="countdown-date"></p>
+  </div>
+
+  <!-- 孩子卡片 -->
+  <div id="children-cards"></div>
+
+  <!-- 今日提醒节点 -->
+  <div class="mb-2 mt-4">
+    <h2 class="text-base font-bold text-gray-700 mb-2">📌 今日提醒</h2>
+  </div>
+  <div id="reminder-cards"></div>
+
+  <!-- 快捷操作 -->
+  <div class="grid grid-cols-3 gap-3 mt-4">
+    <a href="tasks.html" class="card card-tap text-center" style="margin-bottom:0;">
+      <div style="font-size:28px;">📋</div>
+      <p class="text-xs text-gray-600 mt-1">任务管理</p>
+    </a>
+    <a href="rewards.html" class="card card-tap text-center" style="margin-bottom:0;">
+      <div style="font-size:28px;">🎁</div>
+      <p class="text-xs text-gray-600 mt-1">积分奖励</p>
+    </a>
+    <a href="sprint.html" class="card card-tap text-center" style="margin-bottom:0;">
+      <div style="font-size:28px;">⚡</div>
+      <p class="text-xs text-gray-600 mt-1">分班冲刺</p>
+    </a>
+  </div>
+
+  <!-- 修复入口（界面异常时一键清理缓存） -->
+  <div class="mt-3">
+    <button onclick="app.clearCacheAndReload()" class="btn btn-outline w-full" style="color:#3b82f6;border-color:#bfdbfe;font-size:13px;">
+      🛠️ 界面异常/看不到任务？点此一键修复（不删数据）
+    </button>
+  </div>
+
+</div>
+
+<!-- 底部导航 -->
+<div id="bottom-nav"></div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+(function() {
+  const store = SSMStore;
+  const app = window.app || SSMApp;
+
+  function render() {
+    // 日期
+    const todayStr = app.todayStr();
+    document.getElementById('today-date').textContent = app.formatDate(todayStr);
+
+    // 倒计时
+    const brotherInfo = store.getChildById('brother');
+    const examDate = brotherInfo && brotherInfo.examDate;
+    const days = store.getExamCountdown();
+    const daysEl = document.getElementById('countdown-days');
+    const dateEl = document.getElementById('countdown-date');
+    if (examDate) {
+      const md = examDate.slice(5).replace('-', '月') + '日';
+      if (days === null) {
+        daysEl.textContent = '∞';
+        dateEl.textContent = `${md} 考试 · 长期计划`;
+      } else if (days > 0) {
+        daysEl.textContent = days;
+        dateEl.textContent = `${md} 考试 · 还有${days}天`;
+      } else {
+        daysEl.textContent = '0';
+        dateEl.textContent = `${md} 考试 · 已结束`;
+      }
+    } else {
+      daysEl.textContent = '∞';
+      dateEl.textContent = '长期计划模式（未设置考试日期）';
+    }
+
+    // 孩子卡片
+    renderChildren();
+
+    // 提醒
+    renderReminders();
+
+    // 导航
+    app.injectNav();
+  }
+
+  function renderChildren() {
+    const container = document.getElementById('children-cards');
+    const children = store.getChildren();
+    if (!children || children.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>孩子信息加载失败</p><p class="text-xs mt-2">请点下方「一键修复」重置</p></div>';
+      return;
+    }
+    let html = '';
+
+    children.forEach(child => {
+      const tasks = store.getTodayTasks(child.id);
+      const completed = tasks.filter(t => t.status === 'completed').length;
+      const partial = tasks.filter(t => t.status === 'partial').length;
+      const total = tasks.length;
+      const rate = total > 0 ? (completed + partial * 0.5) / total : 0;
+      const points = store.getPoints(child.id);
+      const cardClass = child.id === 'brother' ? 'child-card-brother' : 'child-card-little';
+
+      html += `
+        <div class="child-card ${cardClass}" onclick="location.href='tasks.html?child=${child.id}'">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-lg font-bold text-gray-800">${child.name} <span class="text-xs text-gray-500">${child.grade}</span></h3>
+              <p class="text-xs text-gray-500 mt-1">${completed}/${total} 项完成 · ${partial} 部分完成</p>
+            </div>
+            ${app.progressRingSVG(rate, 56)}
+          </div>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">⭐</span>
+              <span class="points-display" style="font-size:24px;">${points}</span>
+              <span class="text-xs text-gray-500">积分</span>
+            </div>
+            <div class="flex gap-1">
+              ${rate >= 0.6 ? '<span class="tag" style="background:#dcfce7;color:#166534;">✓ 达标</span>' : '<span class="tag" style="background:#fee2e2;color:#991b1b;">未达标</span>'}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  function renderReminders() {
+    const container = document.getElementById('reminder-cards');
+    const children = store.getChildren();
+    const times = [
+      { time: '07:00', label: '早间计划', icon: '🌅', cls: 'reminder-morning', desc: '查看今日计划，心里有数', slot: 'morning' },
+      { time: '10:00', label: '给选择建议', icon: '📞', cls: 'reminder-noon', desc: '孩子打电话时，给他2-3个选择', slot: 'noon' },
+      { time: '12:00', label: '中午跟进', icon: '🍽️', cls: 'reminder-afternoon', desc: '了解上午完成情况，调整下午安排', slot: 'afternoon' },
+      { time: '16:00', label: '下午提醒', icon: '☀️', cls: 'reminder-evening', desc: '提醒剩余任务，回家后标记完成', slot: 'evening' }
+    ];
+
+    const currentSlot = app.currentTimeSlot();
+    const slotMap = { morning: 0, noon: 1, afternoon: 2, evening: 3 };
+
+    let html = '';
+    times.forEach((r, i) => {
+      const isPast = i < (slotMap[currentSlot] || 0);
+      const isCurrent = i === (slotMap[currentSlot] || 0);
+      const opacity = isPast ? '0.6' : '1';
+      const expanded = isCurrent ? 'expanded' : '';
+
+      // 为该时间段生成两个孩子的推荐任务
+      let tasksHtml = '';
+      children.forEach(child => {
+        const suggestions = store.getSuggestions(child.id, r.slot);
+        const topSuggestions = suggestions.slice(0, 3);
+        if (topSuggestions.length === 0) return;
+
+        tasksHtml += `<div class="text-xs font-bold text-gray-500 mb-2 mt-3">${child.name}推荐</div>`;
+        topSuggestions.forEach((s, idx) => {
+          const t = s.template;
+          tasksHtml += `
+            <div class="reminder-task-item" onclick="event.stopPropagation(); location.href='tasks.html?child=${child.id}'">
+              <span class="reminder-task-name">${String.fromCharCode(65 + idx)}. ${t.name}</span>
+              <span class="reminder-task-meta">${t.duration || ''}min · +${t.points}分</span>
+            </div>
+          `;
+        });
+      });
+
+      const hasTasks = tasksHtml !== '';
+
+      html += `
+        <div class="reminder-card ${r.cls} ${expanded}" style="opacity:${opacity};" data-index="${i}">
+          <div style="font-size:24px;">${r.icon}</div>
+          <div class="flex-1">
+            <div class="reminder-header" onclick="toggleReminder(${i})">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-sm text-gray-800">${r.time}</span>
+                  <span class="text-xs text-gray-500">${r.label}</span>
+                  ${isCurrent ? '<span class="tag" style="background:#3b82f6;color:#fff;">现在</span>' : ''}
+                </div>
+                <p class="text-xs text-gray-600 mt-1">${r.desc}</p>
+              </div>
+              <span class="expand-icon">▼</span>
+            </div>
+            ${hasTasks ? `<div class="reminder-tasks">${tasksHtml}</div>` : ''}
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  window.toggleReminder = function(index) {
+    const card = document.querySelector(`.reminder-card[data-index="${index}"]`);
+    if (card) {
+      card.classList.toggle('expanded');
+    }
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
