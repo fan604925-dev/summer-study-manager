@@ -279,6 +279,33 @@ body {
   font-size: 12px;
 }
 
+.btn-danger {
+  background: #ef4444;
+  color: #fff;
+}
+
+.btn-danger:active {
+  background: #dc2626;
+}
+
+/* 任务列表项的快速删除按钮 */
+.del-btn {
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: all 0.15s;
+}
+
+.del-btn:active {
+  opacity: 1;
+  background: #fee2e2;
+}
+
 /* -------- 时间线 -------- */
 .timeline {
   position: relative;

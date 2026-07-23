@@ -32,7 +32,8 @@
     POINTS: 'ssm_points',
     REWARDS: 'ssm_rewards',
     SETTINGS: 'ssm_settings',
-    PROGRESS_LOG: 'ssm_progressLog'
+    PROGRESS_LOG: 'ssm_progressLog',
+    DELETED_TEMPLATES: 'ssm_deletedTemplates'
   };
 
   // 数据版本号（修改默认数据时递增，触发自动修复）
@@ -460,6 +461,7 @@
       this.rewards = [];
       this.settings = {};
       this.progressLog = [];
+      this.deletedTemplateIds = []; // 已删除的任务模板 id（防止默认任务被自动修复复活）
       this._lsAvailable = true; // localStorage 可用性标记（被浏览器/隐私模式禁用时置 false）
     }
 
@@ -523,6 +525,7 @@
       this.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
       this.taskInstances = {};
       this.progressLog = [];
+      this.deletedTemplateIds = [];
       localStorage.setItem(STORAGE_KEYS.VERSION, DATA_VERSION);
       this.save();
     }
@@ -567,6 +570,18 @@
             this.taskTemplates.push(t);
           }
         });
+
+        // 4) 移除已被用户删除的默认模板（防止自动修复/版本升级时复活）
+        if (this.deletedTemplateIds && this.deletedTemplateIds.length > 0) {
+          const delSet = new Set(this.deletedTemplateIds);
+          this.taskTemplates = this.taskTemplates.filter(t => !delSet.has(t.id));
+        }
+      }
+
+      // 无论走哪个分支，最后都剔除已被用户删除的模板（防止整体重填时复活）
+      if (this.deletedTemplateIds && this.deletedTemplateIds.length > 0) {
+        const delSet = new Set(this.deletedTemplateIds);
+        this.taskTemplates = this.taskTemplates.filter(t => !delSet.has(t.id));
       }
 
       // 如果奖励丢失/为空，重新填充默认奖励
@@ -677,6 +692,7 @@
           localStorage.setItem(STORAGE_KEYS.REWARDS, JSON.stringify(this.rewards));
           localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(this.settings));
           localStorage.setItem(STORAGE_KEYS.PROGRESS_LOG, JSON.stringify(this.progressLog));
+          localStorage.setItem(STORAGE_KEYS.DELETED_TEMPLATES, JSON.stringify(this.deletedTemplateIds));
           lsOk = true;
         } catch (e) {
           // localStorage 被浏览器/隐私模式/WebView 禁用或写入失败时，标记为不可用
@@ -706,7 +722,8 @@
         points: this.points,
         rewards: this.rewards,
         settings: this.settings,
-        progressLog: this.progressLog
+        progressLog: this.progressLog,
+        deletedTemplateIds: this.deletedTemplateIds
       };
     }
 
@@ -723,6 +740,7 @@
       this.rewards = data.rewards || [];
       this.settings = data.settings || JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
       this.progressLog = data.progressLog || [];
+      this.deletedTemplateIds = data.deletedTemplateIds || [];
     }
 
     /**
@@ -781,6 +799,7 @@
         this.rewards = JSON.parse(localStorage.getItem(STORAGE_KEYS.REWARDS)) || [];
         this.settings = JSON.parse(localStorage.getItem(STORAGE_KEYS.SETTINGS)) || DEFAULT_SETTINGS;
         this.progressLog = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROGRESS_LOG)) || [];
+        this.deletedTemplateIds = JSON.parse(localStorage.getItem(STORAGE_KEYS.DELETED_TEMPLATES)) || [];
         return true;
       } catch (e) {
         console.error('[Store] 加载失败:', e);
@@ -861,6 +880,39 @@
      */
     getTaskTemplateById(templateId) {
       return this.taskTemplates.find(t => t.id === templateId) || null;
+    }
+
+    /**
+     * 删除任务模板（及其所有日期下的任务实例）
+     * - 自定义任务：直接移除，不会复活
+     * - 默认任务：加入 deletedTemplateIds，防止自动修复/版本升级时复活
+     * 注意：已获得的积分不会被扣回（保护孩子已得成果）
+     * @param {string} templateId
+     * @returns {boolean}
+     */
+    deleteTaskTemplate(templateId) {
+      const idx = this.taskTemplates.findIndex(t => t.id === templateId);
+      if (idx === -1) return false;
+
+      // 从模板列表移除
+      this.taskTemplates.splice(idx, 1);
+
+      // 记录删除，防止默认任务被 _repairData 复活
+      if (!this.deletedTemplateIds) this.deletedTemplateIds = [];
+      if (!this.deletedTemplateIds.includes(templateId)) {
+        this.deletedTemplateIds.push(templateId);
+      }
+
+      // 删除所有日期下引用该模板的实例
+      for (const dateStr in this.taskInstances) {
+        const arr = this.taskInstances[dateStr];
+        for (let i = arr.length - 1; i >= 0; i--) {
+          if (arr[i].templateId === templateId) arr.splice(i, 1);
+        }
+      }
+
+      this.save();
+      return true;
     }
 
     /* ----------------------------------------------------

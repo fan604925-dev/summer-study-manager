@@ -256,7 +256,10 @@
             <span class="text-xs ${earnedPoints > 0 ? 'text-green-600 font-bold' : 'text-gray-400'}">+${earnedPoints}/${points}分</span>
           </div>
         </div>
-        <div class="text-gray-300" onclick="openTaskModal('${instance.id}')">›</div>
+        <div class="flex items-center gap-1 ml-1">
+          <button class="del-btn" onclick="event.stopPropagation(); deleteTask('${template.id}', ${template.custom ? 'true' : 'false'})" aria-label="删除任务" title="删除任务">🗑️</button>
+          <div class="text-gray-300" onclick="openTaskModal('${instance.id}')">›</div>
+        </div>
       </div>
     `;
   }
@@ -279,6 +282,26 @@
     }
     renderChildTabs();
     renderTasks();
+  };
+
+  // 删除任务（自定义任务 / 默认任务都适用）
+  window.deleteTask = function(templateId, isCustom) {
+    const template = store.getTaskTemplateById(templateId);
+    const name = template ? template.name : '该任务';
+    const msg = isCustom
+      ? `确定删除任务「${name}」吗？\n此操作不可恢复，删除后今天和以后都不会再出现。`
+      : `确定永久删除「${name}」吗？\n以后都不会再自动出现（已获得的积分不会被扣回）。`;
+    if (!app.confirm(msg)) return;
+
+    const ok = store.deleteTaskTemplate(templateId);
+    if (ok) {
+      app.toast(`已删除「${name}」`);
+      closeModal();
+      renderChildTabs();
+      renderTasks();
+    } else {
+      app.toast('删除失败：任务不存在');
+    }
   };
 
   function filterTasks(tasks) {
@@ -388,6 +411,13 @@
       </div>
 
       ${instance.note ? `<div class="mt-3 p-3 bg-gray-50 rounded-lg"><p class="text-xs text-gray-500">备注：${instance.note}</p></div>` : ''}
+
+      <div class="mt-4 pt-3 border-t border-gray-100">
+        <button onclick="deleteTask('${template.id}', ${template.custom ? 'true' : 'false'})" class="btn btn-danger w-full">
+          🗑️ ${template.custom ? '删除任务（永久移除）' : '永久删除该任务（以后不再出现）'}
+        </button>
+        <p class="text-xs text-gray-400 mt-2 text-center">${template.custom ? '手动添加的任务，删除后不可恢复' : '已获得的积分不会被扣回'}</p>
+      </div>
     `;
 
     document.getElementById('task-modal').classList.add('active');

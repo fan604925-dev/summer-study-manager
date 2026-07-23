@@ -196,4 +196,46 @@ const oldEnglishNotes = store6.getTaskTemplateById('english_yuan_notes');
 assert(!!oldEnglishNotes, '英语笔记模板存在');
 assert(oldEnglishNotes.frequency === 'dateRange', '英语笔记模板已更新为 dateRange');
 
+// 15. 任务删除功能（v17 新增删减）
+// 15.1 删除自定义任务：模板与实例一并移除
+const customTpl = {
+  id: 'custom_del_test',
+  childId: 'brother',
+  name: '临时删除测试任务',
+  subject: 'other',
+  duration: 10,
+  points: 5,
+  frequency: 'daily',
+  daily: true,
+  custom: true
+};
+global.SSMStore.taskTemplates.push(customTpl);
+const _d = new Date();
+const delTodayStr = _d.getFullYear() + '-' + String(_d.getMonth() + 1).padStart(2, '0') + '-' + String(_d.getDate()).padStart(2, '0');
+if (!global.SSMStore.taskInstances[delTodayStr]) global.SSMStore.taskInstances[delTodayStr] = [];
+global.SSMStore.taskInstances[delTodayStr].push({
+  id: 'instance_' + delTodayStr + '_custom_del_test',
+  templateId: 'custom_del_test', childId: 'brother', date: todayStr,
+  status: 'pending', completedPercentage: 0, pointsEarned: 0, carryOver: false, note: ''
+});
+global.SSMStore.save();
+assert(!!global.SSMStore.getTaskTemplateById('custom_del_test'), '删除前自定义模板存在');
+const delOk = global.SSMStore.deleteTaskTemplate('custom_del_test');
+assert(delOk === true, 'deleteTaskTemplate 返回成功');
+assert(!global.SSMStore.getTaskTemplateById('custom_del_test'), '删除后自定义模板已移除');
+assert(!global.SSMStore.getTodayTasks('brother').some(t => t.templateId === 'custom_del_test'), '删除后今天不再有该任务实例');
+
+// 15.2 删除默认任务后，_repairData 不应复活
+const defaultTpl = global.SSMStore.getTaskTemplates('brother').find(t => !t.custom);
+assert(!!defaultTpl, '能取到默认任务模板用于删除测试');
+const defaultDelId = defaultTpl.id;
+const beforeDelCount = global.SSMStore.getTaskTemplates('brother').length;
+global.SSMStore.deleteTaskTemplate(defaultDelId);
+assert(!global.SSMStore.getTaskTemplateById(defaultDelId), '默认模板删除后从列表移除');
+assert(global.SSMStore.deletedTemplateIds.includes(defaultDelId), '默认模板删除后记入 deletedTemplateIds');
+// 模拟版本修复
+global.SSMStore._repairData();
+assert(!global.SSMStore.getTaskTemplateById(defaultDelId), '修复(repair)后默认任务未复活');
+assert(!global.SSMStore.getTaskTemplates('brother').some(t => t.id === defaultDelId), '修复后哥哥模板列表不含已删任务');
+
 console.log('\n🎉 所有测试通过！');
