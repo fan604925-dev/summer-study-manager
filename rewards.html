@@ -43,7 +43,8 @@
     </div>
     <p class="text-sm text-gray-500" id="points-label">哥哥可兑换奖励</p>
     <div class="mt-2 pt-2 border-t border-gray-100">
-      <p class="text-xs text-gray-400">累计获得 <span id="total-earned" class="font-bold text-gray-600">0</span> 分 · 已兑换 <span id="total-spent" class="font-bold text-gray-600">0</span> 分</p>
+      <p class="text-xs text-gray-400">学习积分：累计 <span id="total-earned" class="font-bold text-gray-600">0</span> · 已兑换 <span id="total-spent" class="font-bold text-gray-600">0</span></p>
+      <p class="text-xs text-gray-400 mt-1">💰 家务积分（可换零花钱）：<span id="cashable-points" class="font-bold text-orange-600">0</span> 分</p>
     </div>
   </div>
 
@@ -122,7 +123,8 @@
 
   function renderRewards() {
     const child = store.getChildById(currentChild);
-    const points = store.getPoints(currentChild);
+    const points = store.getPoints(currentChild);          // 学习积分
+    const cashPoints = store.getCashablePoints(currentChild); // 家务积分
     const rewards = store.getRewards(currentChild); // 获取全部奖励（含未解锁）
 
     // 防御：如果当前孩子不存在，切换到第一个可用孩子
@@ -140,7 +142,8 @@
 
     // 积分展示
     document.getElementById('current-points').textContent = points;
-    document.getElementById('points-label').textContent = `${child.name}当前积分`;
+    document.getElementById('points-label').textContent = `${child.name}当前学习积分`;
+    document.getElementById('cashable-points').textContent = cashPoints;
 
     // 累计统计
     const pointsData = store.getPointsSummary(currentChild);
@@ -157,46 +160,76 @@
     ];
     document.getElementById('reward-tip').textContent = tips[Math.floor(Math.random() * tips.length)];
 
-    // 奖励列表
-    const container = document.getElementById('rewards-list');
     if (!rewards || rewards.length === 0) {
-      container.innerHTML = '<div class="empty-state"><div class="empty-icon">🎁</div><p>暂无奖励配置</p><p class="text-xs mt-2">去设置页添加奖励</p></div>';
+      document.getElementById('rewards-list').innerHTML = '<div class="empty-state"><div class="empty-icon">🎁</div><p>暂无奖励配置</p><p class="text-xs mt-2">去设置页添加奖励</p></div>';
       renderHistory();
       return;
     }
 
-    let html = '';
-    rewards.forEach((r, i) => {
-      const canAfford = points >= r.cost;
-      let cls = canAfford ? 'reward-available' : 'reward-locked';
-      const typeIcons = { privilege: '✨', small: '🍴', learning: '📺', medium: '🏔️', large: '🎢', xl: '🎉' };
-      let icon = typeIcons[r.type] || '🎈';
-      const typeLabels = { privilege: '特权', small: '小体验', learning: '学习型', medium: '中体验', large: '大体验', xl: '特大体验' };
-      let typeLabel = typeLabels[r.type] || '';
+    // 拆分：体验/庆祝奖励（学习积分） 与 零花钱兑换（家务积分）
+    const experienceRewards = rewards.filter(r => r.type !== 'cash');
+    const cashRewards = rewards.filter(r => r.type === 'cash');
 
-      html += `
-        <div class="reward-card ${cls}">
-          <div class="flex items-center gap-3 flex-1">
-            <span style="font-size:24px;">${icon}</span>
-            <div>
-              <p class="text-sm font-medium ${canAfford ? 'text-gray-800' : 'text-gray-400'}">${r.name}</p>
-              <p class="text-xs text-gray-400">${r.cost} 积分${typeLabel ? ' · ' + typeLabel : ''}</p>
-            </div>
-          </div>
-          ${canAfford ? `<button onclick="openRewardModal(${i})" class="btn btn-sm btn-success">庆祝</button>` :
-            `<span class="tag" style="background:#fee2e2;color:#991b1b;">差${r.cost - points}分</span>`}
-        </div>
-      `;
-    });
-    container.innerHTML = html;
+    let html = '';
+
+    // ---- 体验/庆祝奖励 ----
+    html += `<h2 class="text-base font-bold text-gray-700 mb-2">🎉 可选庆祝方式（用学习积分）</h2>`;
+    if (experienceRewards.length === 0) {
+      html += '<p class="text-xs text-gray-400 mb-3">暂无体验奖励，去设置页添加</p>';
+    } else {
+      experienceRewards.forEach((r, i) => {
+        const realIndex = rewards.indexOf(r);
+        const canAfford = points >= r.cost;
+        let cls = canAfford ? 'reward-available' : 'reward-locked';
+        const typeIcons = { privilege: '✨', small: '🍴', learning: '📺', medium: '🏔️', large: '🎢', xl: '🎉' };
+        let icon = typeIcons[r.type] || '🎈';
+        const typeLabels = { privilege: '特权', small: '小体验', learning: '学习型', medium: '中体验', large: '大体验', xl: '特大体验' };
+        let typeLabel = typeLabels[r.type] || '';
+        html += renderRewardCard(r, realIndex, canAfford, points, icon, typeLabel, '庆祝');
+      });
+    }
+
+    // ---- 零花钱兑换 ----
+    html += `<h2 class="text-base font-bold text-gray-700 mt-4 mb-2">💰 零花钱兑换（用家务积分·当前 ${cashPoints} 分）</h2>`;
+    if (cashRewards.length === 0) {
+      html += '<p class="text-xs text-gray-400">暂无零花钱奖励，去设置页添加</p>';
+    } else {
+      cashRewards.forEach((r, i) => {
+        const realIndex = rewards.indexOf(r);
+        const canAfford = cashPoints >= r.cost;
+        let cls = canAfford ? 'reward-available' : 'reward-locked';
+        const icon = '💰';
+        html += renderRewardCard(r, realIndex, canAfford, cashPoints, icon, '零花钱', '兑换');
+      });
+    }
+
+    document.getElementById('rewards-list').innerHTML = html;
 
     renderHistory();
   }
 
+  // 渲染单个奖励卡片（可复用）
+  function renderRewardCard(r, realIndex, canAfford, points, icon, typeLabel, btnText) {
+    return `
+      <div class="reward-card ${canAfford ? 'reward-available' : 'reward-locked'}">
+        <div class="flex items-center gap-3 flex-1">
+          <span style="font-size:24px;">${icon}</span>
+          <div>
+            <p class="text-sm font-medium ${canAfford ? 'text-gray-800' : 'text-gray-400'}">${r.name}</p>
+            <p class="text-xs text-gray-400">${r.cost} 分${typeLabel ? ' · ' + typeLabel : ''}</p>
+          </div>
+        </div>
+        ${canAfford ? `<button onclick="openRewardModal(${realIndex})" class="btn btn-sm btn-success">${btnText}</button>` :
+          `<span class="tag" style="background:#fee2e2;color:#991b1b;">差${r.cost - points}分</span>`}
+      </div>
+    `;
+  }
+
   function renderHistory() {
     const container = document.getElementById('history-list');
-    const pointsData = store.getPointsSummary(currentChild);
-    const history = (pointsData.history || []).filter(h => h.type === 'spend').reverse();
+    const studyHistory = (store.getPointsSummary(currentChild).history || []).filter(h => h.type === 'spend');
+    const cashHistory = (store.getCashableSummary(currentChild).history || []).filter(h => h.type === 'spend');
+    const history = studyHistory.concat(cashHistory).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
     if (history.length === 0) {
       container.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">还没有兑换记录</p>';
@@ -205,13 +238,14 @@
 
     let html = '';
     history.slice(0, 10).forEach(h => {
+      const isCash = (h.description || '').indexOf('零花钱') !== -1;
       html += `
         <div class="task-item" style="background:#f7fafc;">
           <div class="flex-1">
             <p class="text-sm text-gray-700">${h.description || '兑换奖励'}</p>
             <p class="text-xs text-gray-400">${h.date || ''}</p>
           </div>
-          <span class="text-sm font-bold text-orange-500">-${h.amount}</span>
+          <span class="text-sm font-bold ${isCash ? 'text-orange-500' : 'text-orange-500'}">-${h.amount}</span>
         </div>
       `;
     });
@@ -229,27 +263,35 @@
     const r = rewards[rewardIndex];
     if (!r) return;
     const child = store.getChildById(currentChild);
-    const points = store.getPoints(currentChild);
-    const typeIcons = { privilege: '✨', small: '🍴', learning: '📺', medium: '🏔️', large: '🎢', xl: '🎉' };
+    const isCash = r.type === 'cash';
+    const points = isCash ? store.getCashablePoints(currentChild) : store.getPoints(currentChild);
+    const typeIcons = { privilege: '✨', small: '🍴', learning: '📺', medium: '🏔️', large: '🎢', xl: '🎉', cash: '💰' };
     let icon = typeIcons[r.type] || '🎈';
 
     document.getElementById('reward-modal-body').innerHTML = `
       <div class="text-center mb-4">
         <div style="font-size:48px;">${icon}</div>
         <h4 class="text-lg font-bold mt-2">${r.name}</h4>
-        <p class="text-sm text-gray-500 mt-1">${r.cost} 积分</p>
+        <p class="text-sm text-gray-500 mt-1">${r.cost} 分${isCash ? '（家务积分）' : '（学习积分）'}</p>
       </div>
 
+      ${isCash ? `
+      <div class="card" style="background:#fff7ed;border:1px solid #fed7aa;margin-bottom:12px;">
+        <p class="text-sm text-orange-700 font-semibold">💰 零花钱兑换</p>
+        <p class="text-xs text-orange-600 mt-1">这是孩子用家务劳动挣来的积分换成的零花钱，属于ta的劳动报酬，建议让孩子自己决定怎么花。</p>
+      </div>
+      ` : `
       <div class="card" style="background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:12px;">
         <p class="text-sm text-green-700 font-semibold">💬 庆祝话术建议</p>
         <p class="text-xs text-green-600 mt-1">"${child.name}，你最近特别努力，每天都坚持做${child.id === 'brother' ? '数学' : '思维课'}，我们今天去${r.name}庆祝一下！"</p>
         <p class="text-xs text-green-500 mt-1">⚠️ 不要说"你赚到了X"或"这是你换的"</p>
       </div>
+      `}
 
-      <p class="text-xs text-gray-400 mb-3">兑换后扣除 ${r.cost} 积分，剩余 ${points - r.cost} 积分</p>
+      <p class="text-xs text-gray-400 mb-3">兑换后扣除 ${r.cost} 分，剩余 ${points - r.cost} 分</p>
 
       <button onclick="confirmRedeem(${rewardIndex})" class="btn btn-success w-full">
-        确认庆祝！扣除 ${r.cost} 积分
+        确认${isCash ? '兑换零花钱' : '庆祝'}！扣除 ${r.cost} 分
       </button>
     `;
     document.getElementById('reward-modal').classList.add('active');

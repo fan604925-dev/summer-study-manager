@@ -164,9 +164,10 @@
     container.innerHTML = children.map(c => {
       const active = c.id === currentChild;
       const points = store.getPoints(c.id);
+      const cash = store.getCashablePoints(c.id);
       return `
         <button onclick="switchChild('${c.id}')" class="btn btn-sm ${active ? 'btn-primary' : 'btn-outline'}">
-          ${c.name} ⭐${points}
+          ${c.name} ⭐${points} 💰${cash}
         </button>
       `;
     }).join('');

@@ -33,11 +33,12 @@
     REWARDS: 'ssm_rewards',
     SETTINGS: 'ssm_settings',
     PROGRESS_LOG: 'ssm_progressLog',
-    DELETED_TEMPLATES: 'ssm_deletedTemplates'
+    DELETED_TEMPLATES: 'ssm_deletedTemplates',
+    CASHABLE_POINTS: 'ssm_cashablePoints'
   };
 
   // 数据版本号（修改默认数据时递增，触发自动修复）
-  const DATA_VERSION = '16';
+  const DATA_VERSION = '17';
 
   // 任务状态枚举
   const TASK_STATUS = {
@@ -247,7 +248,20 @@
     { id: 'little_words', childId: 'little', subject: 'english', name: '三年级上册单词', frequency: 'daily', duration: 10, points: 6 },
 
     // --- 其他 ---
-    { id: 'little_calligraphy', childId: 'little', subject: 'other', name: '书法课程', frequency: 'daily', duration: 20, points: 4, flexible: true }
+    { id: 'little_calligraphy', childId: 'little', subject: 'other', name: '书法课程', frequency: 'daily', duration: 20, points: 4, flexible: true },
+
+    // ========== 家务劳动（可兑换零花钱，cashable） ==========
+    // 哥哥家务
+    { id: 'brother_chore_wash', childId: 'brother', subject: 'other', name: '洗碗', frequency: 'daily', duration: 15, points: 5, cashable: true, needMomGuide: false },
+    { id: 'brother_chore_sweep', childId: 'brother', subject: 'other', name: '扫地', frequency: 'daily', duration: 10, points: 3, cashable: true },
+    { id: 'brother_chore_mop', childId: 'brother', subject: 'other', name: '拖地', frequency: 'daily', duration: 15, points: 3, cashable: true },
+    { id: 'brother_chore_laundry', childId: 'brother', subject: 'other', name: '洗衣服（自己的一批）', frequency: 'weekly', duration: 20, points: 8, cashable: true },
+
+    // 弟弟家务
+    { id: 'little_chore_wash', childId: 'little', subject: 'other', name: '洗碗', frequency: 'daily', duration: 15, points: 5, cashable: true },
+    { id: 'little_chore_sweep', childId: 'little', subject: 'other', name: '扫地', frequency: 'daily', duration: 10, points: 3, cashable: true },
+    { id: 'little_chore_mop', childId: 'little', subject: 'other', name: '拖地', frequency: 'daily', duration: 15, points: 3, cashable: true },
+    { id: 'little_chore_laundry', childId: 'little', subject: 'other', name: '洗衣服（自己的一批）', frequency: 'weekly', duration: 20, points: 8, cashable: true }
   ];
 
   /**
@@ -288,7 +302,17 @@
     { childId: 'little', name: '游乐场', cost: 100, type: 'large', description: '去游乐场' },
     { childId: 'little', name: '和妈妈一起做大手工', cost: 100, type: 'large', description: '和妈妈一起做大手工' },
     { childId: 'little', name: '一起吃大餐+逛书店买全套书', cost: 150, type: 'xl', description: '大餐+书店买全套书' },
-    { childId: 'little', name: '周末自由一天', cost: 150, type: 'xl', description: '周末自由安排一天' }
+    { childId: 'little', name: '周末自由一天', cost: 150, type: 'xl', description: '周末自由安排一天' },
+
+    // --- 哥哥零花钱兑换（家务积分 → 钱，1元=10分） ---
+    { childId: 'brother', name: '兑换5元零花钱', cost: 50, type: 'cash', description: '用家务积分换5元零花钱' },
+    { childId: 'brother', name: '兑换10元零花钱', cost: 100, type: 'cash', description: '用家务积分换10元零花钱' },
+    { childId: 'brother', name: '兑换20元零花钱', cost: 200, type: 'cash', description: '用家务积分换20元零花钱' },
+
+    // --- 弟弟零花钱兑换（家务积分 → 钱，1元=10分） ---
+    { childId: 'little', name: '兑换3元零花钱', cost: 30, type: 'cash', description: '用家务积分换3元零花钱' },
+    { childId: 'little', name: '兑换5元零花钱', cost: 50, type: 'cash', description: '用家务积分换5元零花钱' },
+    { childId: 'little', name: '兑换10元零花钱', cost: 100, type: 'cash', description: '用家务积分换10元零花钱' }
   ];
 
   /**
@@ -309,6 +333,15 @@
    * history - 兑换历史
    */
   const DEFAULT_POINTS = {
+    brother: { current: 0, total: 0, spent: 0, history: [] },
+    little: { current: 0, total: 0, spent: 0, history: [] }
+  };
+
+  /**
+   * 默认家务积分（可兑换零花钱，与学习积分分离，避免把学习"商品化"）
+   * 仅 cashable:true 的任务会累加到这里
+   */
+  const DEFAULT_CASHABLE_POINTS = {
     brother: { current: 0, total: 0, spent: 0, history: [] },
     little: { current: 0, total: 0, spent: 0, history: [] }
   };
@@ -462,6 +495,7 @@
       this.settings = {};
       this.progressLog = [];
       this.deletedTemplateIds = []; // 已删除的任务模板 id（防止默认任务被自动修复复活）
+      this.cashablePoints = JSON.parse(JSON.stringify(DEFAULT_CASHABLE_POINTS)); // 家务积分（可兑换零花钱，与学习积分分离）
       this._lsAvailable = true; // localStorage 可用性标记（被浏览器/隐私模式禁用时置 false）
     }
 
@@ -526,6 +560,7 @@
       this.taskInstances = {};
       this.progressLog = [];
       this.deletedTemplateIds = [];
+      this.cashablePoints = JSON.parse(JSON.stringify(DEFAULT_CASHABLE_POINTS));
       localStorage.setItem(STORAGE_KEYS.VERSION, DATA_VERSION);
       this.save();
     }
@@ -693,6 +728,7 @@
           localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(this.settings));
           localStorage.setItem(STORAGE_KEYS.PROGRESS_LOG, JSON.stringify(this.progressLog));
           localStorage.setItem(STORAGE_KEYS.DELETED_TEMPLATES, JSON.stringify(this.deletedTemplateIds));
+          localStorage.setItem(STORAGE_KEYS.CASHABLE_POINTS, JSON.stringify(this.cashablePoints));
           lsOk = true;
         } catch (e) {
           // localStorage 被浏览器/隐私模式/WebView 禁用或写入失败时，标记为不可用
@@ -723,7 +759,8 @@
         rewards: this.rewards,
         settings: this.settings,
         progressLog: this.progressLog,
-        deletedTemplateIds: this.deletedTemplateIds
+        deletedTemplateIds: this.deletedTemplateIds,
+        cashablePoints: this.cashablePoints
       };
     }
 
@@ -741,6 +778,7 @@
       this.settings = data.settings || JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
       this.progressLog = data.progressLog || [];
       this.deletedTemplateIds = data.deletedTemplateIds || [];
+      this.cashablePoints = data.cashablePoints || JSON.parse(JSON.stringify(DEFAULT_CASHABLE_POINTS));
     }
 
     /**
@@ -800,6 +838,7 @@
         this.settings = JSON.parse(localStorage.getItem(STORAGE_KEYS.SETTINGS)) || DEFAULT_SETTINGS;
         this.progressLog = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROGRESS_LOG)) || [];
         this.deletedTemplateIds = JSON.parse(localStorage.getItem(STORAGE_KEYS.DELETED_TEMPLATES)) || [];
+        this.cashablePoints = JSON.parse(localStorage.getItem(STORAGE_KEYS.CASHABLE_POINTS)) || JSON.parse(JSON.stringify(DEFAULT_CASHABLE_POINTS));
         return true;
       } catch (e) {
         console.error('[Store] 加载失败:', e);
@@ -1187,9 +1226,14 @@
       }
 
       // 积分调整：只增加增量（total/current 同时增加）
+      // cashable 任务（家务）计入家务积分池，其余计入学习积分池
       const delta = instance.pointsEarned - oldPoints;
       if (!wasCompleted && delta !== 0) {
-        this.earnPoints(instance.childId, delta);
+        if (template.cashable) {
+          this.earnCashablePoints(instance.childId, delta);
+        } else {
+          this.earnPoints(instance.childId, delta);
+        }
       }
 
       // 记录进度日志
@@ -1223,14 +1267,17 @@
       const template = this.getTaskTemplateById(instance.templateId);
       if (!template) return false;
 
-      // 如果之前已完成，扣除积分（current 和 total 都回退）
+      // 如果之前已完成，扣除积分（current 和 total 都回退）——按任务类型回退到对应积分池
       if (instance.status === TASK_STATUS.COMPLETED || instance.status === TASK_STATUS.PARTIAL) {
         const refund = instance.pointsEarned || 0;
-        if (refund > 0 && this.points[instance.childId]) {
-          this.points[instance.childId].current -= refund;
-          this.points[instance.childId].total -= refund;
-          if (this.points[instance.childId].current < 0) this.points[instance.childId].current = 0;
-          if (this.points[instance.childId].total < 0) this.points[instance.childId].total = 0;
+        if (refund > 0) {
+          const pool = template.cashable ? this.cashablePoints : this.points;
+          if (pool[instance.childId]) {
+            pool[instance.childId].current -= refund;
+            pool[instance.childId].total -= refund;
+            if (pool[instance.childId].current < 0) pool[instance.childId].current = 0;
+            if (pool[instance.childId].total < 0) pool[instance.childId].total = 0;
+          }
         }
       }
 
@@ -1355,6 +1402,67 @@
      */
     getPointsSummary(childId) {
       const p = this.points[childId] || { current: 0, total: 0, spent: 0, history: [] };
+      return {
+        current: p.current || 0,
+        total: p.total || 0,
+        spent: p.spent || 0,
+        history: p.history || []
+      };
+    }
+
+    /**
+     * 累加家务积分（仅 cashable 任务调用）
+     */
+    earnCashablePoints(childId, points) {
+      if (!this.cashablePoints[childId] || typeof this.cashablePoints[childId] !== 'object') {
+        this.cashablePoints[childId] = { current: 0, total: 0, spent: 0, history: [] };
+      }
+      this.cashablePoints[childId].current += points;
+      this.cashablePoints[childId].total += points;
+      if (this.cashablePoints[childId].current < 0) this.cashablePoints[childId].current = 0;
+      if (this.cashablePoints[childId].total < 0) this.cashablePoints[childId].total = 0;
+      this.cashablePoints[childId].history.push({
+        type: 'earn',
+        description: '家务劳动',
+        amount: points,
+        date: getTodayStr(),
+        timestamp: Date.now()
+      });
+      this.save();
+    }
+
+    /**
+     * 消费家务积分（兑换零花钱）
+     */
+    spendCashablePoints(childId, cost, description) {
+      if (!this.cashablePoints[childId] || typeof this.cashablePoints[childId] !== 'object') {
+        this.cashablePoints[childId] = { current: 0, total: 0, spent: 0, history: [] };
+      }
+      this.cashablePoints[childId].current -= cost;
+      this.cashablePoints[childId].spent += cost;
+      if (this.cashablePoints[childId].current < 0) this.cashablePoints[childId].current = 0;
+      this.cashablePoints[childId].history.push({
+        type: 'spend',
+        description: description || '兑换零花钱',
+        amount: cost,
+        date: getTodayStr(),
+        timestamp: Date.now()
+      });
+      this.save();
+    }
+
+    /**
+     * 获取当前可用家务积分
+     */
+    getCashablePoints(childId) {
+      return (this.cashablePoints[childId] && this.cashablePoints[childId].current) || 0;
+    }
+
+    /**
+     * 获取家务积分完整统计
+     */
+    getCashableSummary(childId) {
+      const p = this.cashablePoints[childId] || { current: 0, total: 0, spent: 0, history: [] };
       return {
         current: p.current || 0,
         total: p.total || 0,
@@ -1488,14 +1596,19 @@
         return false;
       }
 
-      const currentPoints = this.getPoints(childId);
+      // 零花钱奖励从家务积分池扣除，其余从学习积分池扣除
+      const isCash = reward.type === 'cash';
+      const currentPoints = isCash ? this.getCashablePoints(childId) : this.getPoints(childId);
       if (currentPoints < reward.cost) {
         console.error('[Store] 积分不足:', currentPoints, '/', reward.cost);
         return false;
       }
 
-      // 扣减积分并记录兑换历史
-      this.spendPoints(childId, reward.cost, `兑换「${reward.name}」`);
+      if (isCash) {
+        this.spendCashablePoints(childId, reward.cost, `兑换零花钱「${reward.name}」`);
+      } else {
+        this.spendPoints(childId, reward.cost, `兑换「${reward.name}」`);
+      }
 
       // 记录进度日志
       this._logProgress({
@@ -1503,6 +1616,7 @@
         childId,
         rewardName: reward.name,
         cost: reward.cost,
+        isCash: isCash,
         date: getTodayStr(),
         timestamp: Date.now()
       });

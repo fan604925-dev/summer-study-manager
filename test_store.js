@@ -238,4 +238,50 @@ global.SSMStore._repairData();
 assert(!global.SSMStore.getTaskTemplateById(defaultDelId), '修复(repair)后默认任务未复活');
 assert(!global.SSMStore.getTaskTemplates('brother').some(t => t.id === defaultDelId), '修复后哥哥模板列表不含已删任务');
 
+// 16. 家务积分（cashable）与零花钱兑换（v17 新增）
+// 16.1 完成一个家务任务，应只累加到家务积分池，不计入学习积分
+const choreTpl = global.SSMStore.getTaskTemplateById('brother_chore_wash');
+assert(!!choreTpl && choreTpl.cashable === true, '哥哥洗碗任务是 cashable 家务任务');
+const broStudyBefore = global.SSMStore.getPoints('brother');
+const broCashBefore = global.SSMStore.getCashablePoints('brother');
+const broToday = global.SSMStore.getTodayTasks('brother');
+const choreInst = broToday.find(t => t.templateId === 'brother_chore_wash');
+assert(!!choreInst, '今天有哥哥洗碗任务实例');
+global.SSMStore.markComplete(choreInst.id, 1);
+assert(global.SSMStore.getCashablePoints('brother') === broCashBefore + choreTpl.points, '完成家务后家务积分增加');
+assert(global.SSMStore.getPoints('brother') === broStudyBefore, '完成家务后学习积分不变');
+
+// 16.2 完成一个学习任务，应只累加到学习积分池，不计入家务积分
+const studyTpl = global.SSMStore.getTaskTemplates('brother').find(t => !t.cashable && t.frequency === 'daily');
+assert(!!studyTpl, '能取到非家务的日常任务');
+const studyInst = global.SSMStore.getTodayTasks('brother').find(t => t.templateId === studyTpl.id);
+const cashBeforeStudy = global.SSMStore.getCashablePoints('brother');
+const studyBefore = global.SSMStore.getPoints('brother');
+global.SSMStore.markComplete((studyInst || {id:'__none__'}).id || studyInst.id, 1);
+if (studyInst) {
+  assert(global.SSMStore.getPoints('brother') === studyBefore + studyTpl.points, '完成学习后学习积分增加');
+  assert(global.SSMStore.getCashablePoints('brother') === cashBeforeStudy, '完成学习后家务积分不变');
+}
+
+// 16.3 零花钱兑换从家务积分扣除，不影响学习积分
+// 先补足家务积分（模拟累计家务），再兑换
+global.SSMStore.earnCashablePoints('brother', 50);
+global.SSMStore.rewards.push({ childId: 'brother', name: '测试兑换5元', cost: 50, type: 'cash' });
+const rewardsBro = global.SSMStore.getRewards('brother');
+const cashIdx = rewardsBro.length - 1;
+const cashBeforeRedeem = global.SSMStore.getCashablePoints('brother');
+const studyBeforeRedeem = global.SSMStore.getPoints('brother');
+const okRedeem = global.SSMStore.redeemReward('brother', cashIdx);
+assert(okRedeem === true, '零花钱兑换成功');
+assert(global.SSMStore.getCashablePoints('brother') === cashBeforeRedeem - 50, '兑换后家务积分扣除50');
+assert(global.SSMStore.getPoints('brother') === studyBeforeRedeem, '兑换后学习积分不受影响');
+
+// 16.4 学习积分不足不应能从家务池兑换（反之亦然由 redeemReward 内部判断，这里验证体验奖励不扣家务积分）
+const expIdx = global.SSMStore.getRewards('brother').findIndex(r => r.type !== 'cash');
+if (expIdx >= 0) {
+  const cashB = global.SSMStore.getCashablePoints('brother');
+  global.SSMStore.redeemReward('brother', expIdx);
+  assert(global.SSMStore.getCashablePoints('brother') === cashB, '兑换体验奖励不会扣家务积分');
+}
+
 console.log('\n🎉 所有测试通过！');
