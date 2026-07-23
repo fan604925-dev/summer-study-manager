@@ -76,13 +76,15 @@
 - v11-v12: **彻底解决"刷新仍是旧界面"**——SW 改完全网络优先、数据版本强升、_repairData 强制重填、考试日期可关闭
 - v13: 弃用 CloudStudio，迁移到 **GitHub Pages**（永久免费、稳定固定链接 `https://fan604925-dev.github.io/summer-study-manager/`）
 - v14: 修复**全新打开积分清零**——localStorage 在隐私模式/iOS主屏幕App(standalone)/部分WebView会被清；新增 IndexedDB 冗余持久化（save 双写）+ 启动自动恢复，彻底防丢
+- v18: 修复**家务任务勾选后家务积分未增加**——实例持久化 `cashable` 标记、`_repairData` 同步旧实例、自定义家务名识别为 cashable、`childId='both'` 任务给两个孩子都加分
 
 ## 技术备忘（关键约束）
-- localStorage key 前缀 `ssm_`，数据版本 `DATA_VERSION='16'`
-- 积分结构：`points[childId] = {current, total, spent, history}`；旧版数字格式由 `_repairData` 自动迁移
+- localStorage key 前缀 `ssm_`，数据版本 `DATA_VERSION='18'`
+- 积分结构：学习积分 `points[childId] = {current, total, spent, history}`；家务积分 `cashablePoints[childId]` 同结构（key `ssm_cashablePoints`）；旧版数字格式由 `_repairData` 自动迁移
 - `_repairData` **不再** 清空 `taskInstances`；模板损坏（<40%）或奖励为空时强制重新填充默认
 - `_ensureInstancesForDate` 会自动清理"因模板调整而不应再出现的旧实例"（保留自定义/已完成/顺延任务），保证模板 daily→dateRange 等调整后当天列表立即正确
 - **任务删除(删减)功能**：`store.deleteTaskTemplate(id)` 删模板+所有实例；默认任务删后写入 `deletedTemplateIds`（`ssm_deletedTemplates`），`_repairData` 两条分支末尾都按 `deletedTemplateIds` 过滤 → 版本升级/修复不复活；已得积分不扣回；`tasks.html` 列表项🗑️+弹窗按钮双入口，删除前 `app.confirm` 确认
+- **家务劳动+零花钱(v17/v18)**：洗碗/扫地/拖地(每日)+洗衣服(每周)，哥哥弟弟各一套，`cashable:true`；家务积分 `cashablePoints`（池 `ssm_cashablePoints`，与学习积分 `points` 分离）只累加 cashable 任务；`markComplete`/`markIncomplete` 优先按 `instance.cashable ?? template.cashable` 路由到对应池；`childId='both'` 任务完成时给哥哥、弟弟两个池都加分；奖励 `type:'cash'` 走 `spendCashablePoints`，与体验奖励（学习积分）互不串；兑换比例 **1元=10分（0.1元/分）**，零花钱奖励库 brother 50/100/200分、little 30/50/100分；`_repairData` 会把自定义但名字含“洗碗/扫地/拖地/洗衣服”的模板也识别为 cashable，并同步旧实例的 `cashable` 标记；DATA_VERSION 升 18 触发老用户 repair 修正
 - Service Worker：`CACHE_NAME='ssm-v6'`，**HTML/JS/CSS/manifest 全部网络优先**（仅离线回退缓存），图标缓存优先
 - 考试日期可关闭：设置页留空 `brother.examDate` → 倒计时显示"长期计划模式"（∞）
 - 浏览器若仍显示旧界面：**首页「🛠️ 一键修复」按钮**（app.clearCacheAndReload）或设置页「清除缓存并刷新」或 DevTools 手动 unregister SW
