@@ -38,7 +38,10 @@
   };
 
   // 数据版本号（修改默认数据时递增，触发自动修复）
-  const DATA_VERSION = '17';
+  const DATA_VERSION = '18';
+
+  // 已知家务任务名称关键词（用于把用户自定义的家务模板也识别为 cashable）
+  const KNOWN_CHORE_NAMES = ['洗碗', '扫地', '拖地', '洗衣服'];
 
   // 任务状态枚举
   const TASK_STATUS = {
@@ -619,6 +622,16 @@
         this.taskTemplates = this.taskTemplates.filter(t => !delSet.has(t.id));
       }
 
+      // 5) 把用户自定义但名字属于已知家务的模板也标记为 cashable（兼容旧手动添加的家务任务）
+      this.taskTemplates = this.taskTemplates.map(t => {
+        if (t.cashable) return t;
+        const isChoreName = KNOWN_CHORE_NAMES.some(name => (t.name || '').includes(name));
+        if (isChoreName) {
+          return { ...t, cashable: true };
+        }
+        return t;
+      });
+
       // 如果奖励丢失/为空，重新填充默认奖励
       if (!this.rewards || this.rewards.length === 0) {
         console.log('[Store] 奖励库缺失，重新填充默认奖励');
@@ -654,6 +667,24 @@
           this.points[cid].total = this.points[cid].total || 0;
           this.points[cid].spent = this.points[cid].spent || 0;
           this.points[cid].history = this.points[cid].history || [];
+        }
+      });
+
+      // 确保家务积分结构正确（与学习积分分离）
+      if (!this.cashablePoints || typeof this.cashablePoints !== 'object') {
+        this.cashablePoints = JSON.parse(JSON.stringify(DEFAULT_CASHABLE_POINTS));
+      }
+      ['brother', 'little'].forEach(cid => {
+        if (typeof this.cashablePoints[cid] === 'number') {
+          const oldVal = this.cashablePoints[cid] || 0;
+          this.cashablePoints[cid] = { current: oldVal, total: oldVal, spent: 0, history: [] };
+        } else if (!this.cashablePoints[cid] || typeof this.cashablePoints[cid] !== 'object') {
+          this.cashablePoints[cid] = { current: 0, total: 0, spent: 0, history: [] };
+        } else {
+          this.cashablePoints[cid].current = this.cashablePoints[cid].current || 0;
+          this.cashablePoints[cid].total = this.cashablePoints[cid].total || 0;
+          this.cashablePoints[cid].spent = this.cashablePoints[cid].spent || 0;
+          this.cashablePoints[cid].history = this.cashablePoints[cid].history || [];
         }
       });
 
@@ -693,6 +724,16 @@
       Object.keys(this.taskInstances).forEach(dateStr => {
         this.taskInstances[dateStr] = this.taskInstances[dateStr].filter(inst => {
           return validTemplateIds.has(inst.templateId);
+        });
+      });
+
+      // 同步所有实例的 cashable 标记（根据当前模板属性，避免旧实例走错积分池）
+      Object.keys(this.taskInstances).forEach(dateStr => {
+        this.taskInstances[dateStr].forEach(inst => {
+          const tmpl = this.getTaskTemplateById(inst.templateId);
+          if (tmpl) {
+            inst.cashable = !!(tmpl.cashable || inst.cashable);
+          }
         });
       });
 
@@ -1100,6 +1141,7 @@
                   completedPercentage: yInst.completedPercentage || 0,
                   pointsEarned: 0,
                   carryOver: true,
+                  cashable: !!template.cashable,
                   note: '从昨日顺延'
                 });
               }
@@ -1135,6 +1177,7 @@
             completedPercentage: 0,
             pointsEarned: 0,
             carryOver: false,
+            cashable: !!template.cashable,
             note: ''
           });
         }
@@ -1228,12 +1271,16 @@
       // 积分调整：只增加增量（total/current 同时增加）
       // cashable 任务（家务）计入家务积分池，其余计入学习积分池
       const delta = instance.pointsEarned - oldPoints;
+      const isCashable = instance.cashable ?? template.cashable;
       if (!wasCompleted && delta !== 0) {
-        if (template.cashable) {
-          this.earnCashablePoints(instance.childId, delta);
-        } else {
-          this.earnPoints(instance.childId, delta);
-        }
+        const targetChildren = instance.childId === 'both' ? ['brother', 'little'] : [instance.childId];
+        targetChildren.forEach(cid => {
+          if (isCashable) {
+            this.earnCashablePoints(cid, delta);
+          } else {
+            this.earnPoints(cid, delta);
+          }
+        });
       }
 
       // 记录进度日志
@@ -1270,14 +1317,18 @@
       // 如果之前已完成，扣除积分（current 和 total 都回退）——按任务类型回退到对应积分池
       if (instance.status === TASK_STATUS.COMPLETED || instance.status === TASK_STATUS.PARTIAL) {
         const refund = instance.pointsEarned || 0;
+        const isCashable = instance.cashable ?? template.cashable;
         if (refund > 0) {
-          const pool = template.cashable ? this.cashablePoints : this.points;
-          if (pool[instance.childId]) {
-            pool[instance.childId].current -= refund;
-            pool[instance.childId].total -= refund;
-            if (pool[instance.childId].current < 0) pool[instance.childId].current = 0;
-            if (pool[instance.childId].total < 0) pool[instance.childId].total = 0;
-          }
+          const targetChildren = instance.childId === 'both' ? ['brother', 'little'] : [instance.childId];
+          targetChildren.forEach(cid => {
+            const pool = isCashable ? this.cashablePoints : this.points;
+            if (pool[cid]) {
+              pool[cid].current -= refund;
+              pool[cid].total -= refund;
+              if (pool[cid].current < 0) pool[cid].current = 0;
+              if (pool[cid].total < 0) pool[cid].total = 0;
+            }
+          });
         }
       }
 

@@ -284,4 +284,52 @@ if (expIdx >= 0) {
   assert(global.SSMStore.getCashablePoints('brother') === cashB, '兑换体验奖励不会扣家务积分');
 }
 
+// 18.1 both 孩子的任务完成后，应给两个孩子都加学习积分
+const bothTpl = global.SSMStore.taskTemplates.find(t => t.childId === 'both');
+if (bothTpl) {
+  const bothInst = global.SSMStore.getTodayTasks('brother').find(t => t.templateId === bothTpl.id) ||
+                   global.SSMStore.getTodayTasks('little').find(t => t.templateId === bothTpl.id);
+  if (bothInst) {
+    const broBefore = global.SSMStore.getPoints('brother');
+    const litBefore = global.SSMStore.getPoints('little');
+    global.SSMStore.markComplete(bothInst.id, 1);
+    assert(global.SSMStore.getPoints('brother') === broBefore + bothTpl.points, 'both任务完成后哥哥积分增加');
+    assert(global.SSMStore.getPoints('little') === litBefore + bothTpl.points, 'both任务完成后弟弟积分增加');
+  }
+}
+
+// 18.2 自定义模板名字含“洗碗”时，repair 会标记为 cashable，且完成时计入家务积分
+const customChoreId = 'custom_chore_wash_test';
+global.SSMStore.taskTemplates.push({
+  id: customChoreId,
+  childId: 'brother',
+  subject: 'other',
+  name: '洗碗（测试自定义）',
+  frequency: 'daily',
+  duration: 10,
+  points: 5,
+  custom: true
+});
+const repairDate = new Date().toISOString().split('T')[0];
+if (!global.SSMStore.taskInstances[repairDate]) global.SSMStore.taskInstances[repairDate] = [];
+global.SSMStore.taskInstances[repairDate].push({
+  id: `instance_${repairDate}_${customChoreId}`,
+  templateId: customChoreId,
+  childId: 'brother',
+  date: repairDate,
+  status: 'pending',
+  completedPercentage: 0,
+  pointsEarned: 0,
+  carryOver: false,
+  note: ''
+});
+global.SSMStore._repairData();
+const repairedTpl = global.SSMStore.getTaskTemplateById(customChoreId);
+assert(repairedTpl.cashable === true, '自定义洗碗模板被识别为cashable');
+const repairedInst = global.SSMStore.taskInstances[repairDate].find(i => i.templateId === customChoreId);
+assert(repairedInst.cashable === true, '自定义洗碗实例被同步cashable标记');
+const cashBeforeCustom = global.SSMStore.getCashablePoints('brother');
+global.SSMStore.markComplete(repairedInst.id, 1);
+assert(global.SSMStore.getCashablePoints('brother') === cashBeforeCustom + 5, '自定义洗碗完成后家务积分增加');
+
 console.log('\n🎉 所有测试通过！');
