@@ -44,7 +44,7 @@
     <p class="text-sm text-gray-500" id="points-label">哥哥可兑换奖励</p>
     <div class="mt-2 pt-2 border-t border-gray-100">
       <p class="text-xs text-gray-400">学习积分：累计 <span id="total-earned" class="font-bold text-gray-600">0</span> · 已兑换 <span id="total-spent" class="font-bold text-gray-600">0</span></p>
-      <p class="text-xs text-gray-400 mt-1">💰 家务积分（可换零花钱）：<span id="cashable-points" class="font-bold text-orange-600">0</span> 分</p>
+      <p class="text-xs text-gray-400 mt-1">💰 <span id="cashable-label">哥哥</span>家务积分（可换零花钱）：<span id="cashable-points" class="font-bold text-orange-600">0</span> 分</p>
     </div>
   </div>
 
@@ -144,6 +144,8 @@
     document.getElementById('current-points').textContent = points;
     document.getElementById('points-label').textContent = `${child.name}当前学习积分`;
     document.getElementById('cashable-points').textContent = cashPoints;
+    const cashableLabel = document.getElementById('cashable-label');
+    if (cashableLabel) cashableLabel.textContent = child.name;
 
     // 累计统计
     const pointsData = store.getPointsSummary(currentChild);

@@ -250,6 +250,7 @@
             <span class="text-sm font-medium text-gray-800">${template.name}</span>
             ${app.hardTag(template.hardToStart)}
             ${app.flexibleTag(template.flexible)}
+            ${template.cashable ? '<span class="tag" style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;">💰家务积分</span>' : ''}
             ${instance.carryOver ? '<span class="tag tag-hard">顺延</span>' : ''}
           </div>
           <div class="flex items-center gap-2 mt-1">
@@ -279,7 +280,8 @@
     } else {
       // 未完成则标记完成
       store.markComplete(instanceId, 1);
-      app.toast(`🎉 「${template.name}」完成！+${template.points}分`);
+      const pointType = template.cashable ? '💰家务' : '⭐学习';
+      app.toast(`🎉 「${template.name}」完成！+${template.points}分（${pointType}）`);
     }
     renderChildTabs();
     renderTasks();
