@@ -398,6 +398,51 @@
   }
 
   /* ========================================================
+   * 3.5、IndexedDB 底层封装（冗余持久化，防止 localStorage 被清丢数据）
+   * ====================================================== */
+  const IDB_NAME = 'ssm-db-v1';
+  const IDB_STORE = 'kv';
+  const IDB_DATA_KEY = 'all';
+
+  function _idbOpen() {
+    return new Promise((resolve, reject) => {
+      try {
+        if (!global.indexedDB) { reject(new Error('no indexedDB')); return; }
+        const req = global.indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error || new Error('idb open error'));
+      } catch (e) { reject(e); }
+    });
+  }
+
+  function _idbPut(key, value) {
+    return _idbOpen().then(db => new Promise((resolve, reject) => {
+      try {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put(value, key);
+        tx.oncomplete = () => { try { db.close(); } catch (e) {} resolve(true); };
+        tx.onerror = () => { try { db.close(); } catch (e) {} reject(tx.error); };
+        tx.onabort = () => { try { db.close(); } catch (e) {} reject(tx.error || new Error('idb abort')); };
+      } catch (e) { try { db.close(); } catch (e2) {} reject(e); }
+    }));
+  }
+
+  function _idbGet(key) {
+    return _idbOpen().then(db => new Promise((resolve, reject) => {
+      try {
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const req = tx.objectStore(IDB_STORE).get(key);
+        req.onsuccess = () => { try { db.close(); } catch (e) {} resolve(req.result); };
+        req.onerror = () => { try { db.close(); } catch (e) {} reject(req.error); };
+      } catch (e) { try { db.close(); } catch (e2) {} reject(e); }
+    }));
+  }
+
+  /* ========================================================
    * 四、Store 类
    * ====================================================== */
 
@@ -415,6 +460,7 @@
       this.rewards = [];
       this.settings = {};
       this.progressLog = [];
+      this._lsAvailable = true; // localStorage 可用性标记（被浏览器/隐私模式禁用时置 false）
     }
 
     /* ----------------------------------------------------
@@ -447,6 +493,9 @@
         // 首次使用，填充默认数据
         this._resetToDefaults();
       }
+
+      // 启动 IndexedDB 冗余同步：备份当前数据，并在 localStorage 缺失时自动恢复
+      this._syncIdb();
     }
 
     /**
@@ -616,20 +665,106 @@
      * 保存所有数据到 localStorage
      */
     save() {
-      try {
-        localStorage.setItem(STORAGE_KEYS.VERSION, DATA_VERSION);
-        localStorage.setItem(STORAGE_KEYS.CHILDREN, JSON.stringify(this.children));
-        localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(this.activities));
-        localStorage.setItem(STORAGE_KEYS.TASK_TEMPLATES, JSON.stringify(this.taskTemplates));
-        localStorage.setItem(STORAGE_KEYS.TASK_INSTANCES, JSON.stringify(this.taskInstances));
-        localStorage.setItem(STORAGE_KEYS.POINTS, JSON.stringify(this.points));
-        localStorage.setItem(STORAGE_KEYS.REWARDS, JSON.stringify(this.rewards));
-        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(this.settings));
-        localStorage.setItem(STORAGE_KEYS.PROGRESS_LOG, JSON.stringify(this.progressLog));
-        return true;
-      } catch (e) {
-        console.error('[Store] 保存失败:', e);
-        return false;
+      let lsOk = false;
+      if (this._lsAvailable !== false) {
+        try {
+          localStorage.setItem(STORAGE_KEYS.VERSION, DATA_VERSION);
+          localStorage.setItem(STORAGE_KEYS.CHILDREN, JSON.stringify(this.children));
+          localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(this.activities));
+          localStorage.setItem(STORAGE_KEYS.TASK_TEMPLATES, JSON.stringify(this.taskTemplates));
+          localStorage.setItem(STORAGE_KEYS.TASK_INSTANCES, JSON.stringify(this.taskInstances));
+          localStorage.setItem(STORAGE_KEYS.POINTS, JSON.stringify(this.points));
+          localStorage.setItem(STORAGE_KEYS.REWARDS, JSON.stringify(this.rewards));
+          localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(this.settings));
+          localStorage.setItem(STORAGE_KEYS.PROGRESS_LOG, JSON.stringify(this.progressLog));
+          lsOk = true;
+        } catch (e) {
+          // localStorage 被浏览器/隐私模式/WebView 禁用或写入失败时，标记为不可用
+          console.warn('[Store] localStorage 不可用（可能被清除），已自动切换到 IndexedDB 持久化:', e);
+          this._lsAvailable = false;
+        }
+      }
+      // 异步冗余备份到 IndexedDB：比 localStorage 更可靠，能在被清时自动恢复
+      this._backupToIdb();
+      return lsOk;
+    }
+
+    /* ----------------------------------------------------
+     * IndexedDB 冗余持久化（防止 localStorage 被清导致积分清零）
+     * -------------------------------------------------- */
+
+    /**
+     * 序列化全部数据为单一对象
+     */
+    _serializeAll() {
+      return {
+        version: DATA_VERSION,
+        children: this.children,
+        activities: this.activities,
+        taskTemplates: this.taskTemplates,
+        taskInstances: this.taskInstances,
+        points: this.points,
+        rewards: this.rewards,
+        settings: this.settings,
+        progressLog: this.progressLog
+      };
+    }
+
+    /**
+     * 从序列化对象还原全部数据
+     */
+    _deserializeAll(data) {
+      if (!data) return;
+      this.children = data.children || [];
+      this.activities = data.activities || [];
+      this.taskTemplates = data.taskTemplates || [];
+      this.taskInstances = data.taskInstances || {};
+      this.points = data.points || JSON.parse(JSON.stringify(DEFAULT_POINTS));
+      this.rewards = data.rewards || [];
+      this.settings = data.settings || JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+      this.progressLog = data.progressLog || [];
+    }
+
+    /**
+     * 异步备份到 IndexedDB（不阻塞 UI）
+     */
+    _backupToIdb() {
+      _idbPut(IDB_DATA_KEY, this._serializeAll()).catch(e => {
+        console.warn('[Store] IndexedDB 备份失败（可忽略）:', e);
+      });
+    }
+
+    /**
+     * 启动时的 IndexedDB 同步：
+     * 1) 把当前内存数据（来自 localStorage）备份到 IDB，保证 IDB 始终是最新镜像
+     * 2) 若 localStorage 没有数据（被清），从 IDB 恢复，避免「全新打开积分清零」
+     */
+    _syncIdb() {
+      // 1) 始终先备份当前数据到 IDB（即使来自 localStorage，也确保 IDB 镜像最新）
+      this._backupToIdb();
+
+      // 2) localStorage 缺失或被标记为不可用时，尝试从 IDB 恢复
+      const lsEmpty = this._lsAvailable === false || !localStorage.getItem(STORAGE_KEYS.CHILDREN);
+      if (lsEmpty) {
+        _idbGet(IDB_DATA_KEY).then(data => {
+          if (data && Array.isArray(data.children) && data.children.length > 0) {
+            console.log('[Store] 检测到 localStorage 数据缺失，正从 IndexedDB 恢复...');
+            this._deserializeAll(data);
+            const lsOk = this.save(); // 尝试写回 localStorage（若可用）
+            if (lsOk) {
+              // localStorage 可用：写回后一次性刷新页面，让所有页面用真实数据重新渲染
+              if (!sessionStorage.getItem('ssm_idb_recovered')) {
+                sessionStorage.setItem('ssm_idb_recovered', '1');
+                setTimeout(() => { window.location.reload(); }, 80);
+              } else {
+                window.dispatchEvent(new Event('ssm:data-restored'));
+              }
+            } else {
+              // localStorage 不可用：用内存中的恢复数据原地重渲染
+              window.dispatchEvent(new Event('ssm:data-restored'));
+            }
+          }
+        }).catch(() => {});
       }
     }
 
@@ -1534,6 +1669,8 @@
       this.rewards = [];
       this.settings = {};
       this.progressLog = [];
+      // 同步清空 IndexedDB 冗余备份，避免恢复出已清除的数据
+      this.save();
     }
 
     /**
