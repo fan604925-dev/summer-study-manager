@@ -115,6 +115,10 @@
           <input type="number" id="add-task-points" class="form-input" value="5" min="0">
         </div>
       </div>
+      <div class="flex items-center gap-2 py-1">
+        <input type="checkbox" id="add-task-cashable" class="w-4 h-4 text-orange-500 rounded" />
+        <label for="add-task-cashable" class="text-xs text-gray-600">💰 计为家务积分（可换零花钱）</label>
+      </div>
       <button onclick="submitAddTask()" class="btn btn-primary w-full">添加任务</button>
     </div>
   </div>
@@ -388,6 +392,10 @@
           <p class="text-xs text-gray-400">状态</p>
           <p class="text-sm font-medium">${statusText}</p>
         </div>
+        <div>
+          <p class="text-xs text-gray-400">积分类型</p>
+          <p class="text-sm font-medium">${(instance.cashable ?? template.cashable) ? '💰 家务积分' : '⭐ 学习积分'}</p>
+        </div>
       </div>
 
       ${template.hardToStart ? `
@@ -414,6 +422,15 @@
       </div>
 
       ${instance.note ? `<div class="mt-3 p-3 bg-gray-50 rounded-lg"><p class="text-xs text-gray-500">备注：${instance.note}</p></div>` : ''}
+
+      ${template.custom ? `
+      <div class="mt-4 pt-3 border-t border-gray-100">
+        <button onclick="toggleTaskCashable('${instanceId}')" class="btn btn-outline w-full">
+          ${(instance.cashable ?? template.cashable) ? '改为学习积分（取消家务）' : '改为家务积分（可换零花钱）'}
+        </button>
+        <p class="text-xs text-gray-400 mt-2 text-center">切换后，该任务以后完成的积分会进入对应积分池</p>
+      </div>
+      ` : ''}
 
       <div class="mt-4 pt-3 border-t border-gray-100">
         <button onclick="deleteTask('${template.id}', ${template.custom ? 'true' : 'false'})" class="btn btn-danger w-full">
@@ -447,6 +464,7 @@
     const subject = document.getElementById('add-task-subject').value;
     const duration = parseInt(document.getElementById('add-task-duration').value, 10) || 20;
     const points = parseInt(document.getElementById('add-task-points').value, 10) || 5;
+    const cashable = document.getElementById('add-task-cashable').checked;
 
     if (!name) {
       app.toast('请输入任务名称');
@@ -463,7 +481,8 @@
       points: points,
       frequency: 'daily',
       daily: true,
-      custom: true
+      custom: true,
+      cashable: cashable
     };
 
     // 保存到任务模板列表
@@ -485,6 +504,7 @@
       completedPercentage: 0,
       pointsEarned: 0,
       carryOver: false,
+      cashable: cashable,
       note: '手动添加'
     };
     store.taskInstances[todayStr].push(instance);
@@ -494,6 +514,7 @@
     document.getElementById('add-task-name').value = '';
     document.getElementById('add-task-duration').value = '20';
     document.getElementById('add-task-points').value = '5';
+    document.getElementById('add-task-cashable').checked = false;
 
     closeAddModal();
     app.toast(`已添加任务「${name}」`);
@@ -510,6 +531,7 @@
     const instance = store.getTaskInstanceById(instanceId);
     if (!instance) return;
     const template = store.getTaskTemplateById(instance.templateId);
+    const isCashable = instance.cashable ?? template.cashable;
 
     if (percentage === 0) {
       store.markIncomplete(instanceId);
@@ -517,12 +539,32 @@
     } else {
       store.markComplete(instanceId, percentage);
       const points = percentage >= 1 ? template.points : Math.round(template.points * 0.5);
-      app.toast(`完成！+${points}分 ⭐`);
+      app.toast(`完成！+${points}分 ${isCashable ? '💰家务积分' : '⭐学习积分'}`);
     }
     store.save();
     closeModal();
     renderChildTabs();
     renderTasks();
+  };
+
+  // 切换自定义任务的积分类型（学习积分 / 家务积分）
+  window.toggleTaskCashable = function(instanceId) {
+    const instance = store.getTaskInstanceById(instanceId);
+    if (!instance) return;
+    const template = store.getTaskTemplateById(instance.templateId);
+    if (!template || !template.custom) {
+      app.toast('只有手动添加的任务可以切换积分类型');
+      return;
+    }
+
+    const newCashable = !(instance.cashable ?? template.cashable);
+    template.cashable = newCashable;
+    instance.cashable = newCashable;
+    store.save();
+
+    app.toast(`已切换为${newCashable ? '💰家务积分' : '⭐学习积分'}`);
+    openTaskModal(instanceId);
+    renderChildTabs();
   };
 
   // 点击遮罩关闭

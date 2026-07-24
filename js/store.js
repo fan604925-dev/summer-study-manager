@@ -38,10 +38,10 @@
   };
 
   // 数据版本号（修改默认数据时递增，触发自动修复）
-  const DATA_VERSION = '19';
+  const DATA_VERSION = '20';
 
   // 已知家务任务名称关键词（用于把用户自定义的家务模板也识别为 cashable）
-  const KNOWN_CHORE_NAMES = ['洗碗', '扫地', '拖地', '洗衣服'];
+  const KNOWN_CHORE_NAMES = ['洗碗', '扫地', '拖地', '洗衣服', '整理', '擦桌子', '叠衣服', '倒垃圾', '浇花', '晾衣服', '收衣服'];
 
   // 任务状态枚举
   const TASK_STATUS = {
