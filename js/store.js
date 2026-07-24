@@ -38,7 +38,7 @@
   };
 
   // 数据版本号（修改默认数据时递增，触发自动修复）
-  const DATA_VERSION = '18';
+  const DATA_VERSION = '19';
 
   // 已知家务任务名称关键词（用于把用户自定义的家务模板也识别为 cashable）
   const KNOWN_CHORE_NAMES = ['洗碗', '扫地', '拖地', '洗衣服'];
@@ -733,6 +733,10 @@
           const tmpl = this.getTaskTemplateById(inst.templateId);
           if (tmpl) {
             inst.cashable = !!(tmpl.cashable || inst.cashable);
+          } else if (inst.templateId) {
+            // 模板已不存在时，根据实例名称/原模板名兜底识别家务任务
+            const instName = inst.taskName || inst.name || '';
+            inst.cashable = !!KNOWN_CHORE_NAMES.some(name => instName.includes(name));
           }
         });
       });

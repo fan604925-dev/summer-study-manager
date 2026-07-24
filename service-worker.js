@@ -8,7 +8,7 @@
  * 仅当完全离线时才回退到缓存。图标走缓存优先（离线可缺失）。
  * 这样彻底避免「刷新后还是旧界面」的问题。
  */
-const CACHE_NAME = 'ssm-v6';
+const CACHE_NAME = 'ssm-v7';
 
 // 仅预缓存图标等静态资源（不预缓存会频繁变动的 JS/CSS/HTML）
 const PRECACHE_FILES = [
