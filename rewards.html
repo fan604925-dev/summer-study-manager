@@ -14,7 +14,10 @@
 
   <div class="flex items-center justify-between mb-4">
     <h1 class="text-xl font-bold text-gray-800">🎁 积分奖励</h1>
-    <p class="text-sm text-gray-500" id="today-date"></p>
+    <div class="flex items-center gap-2">
+      <button onclick="openKidView()" class="btn btn-sm btn-outline" style="color:#f59e0b;border-color:#fde68a;">👦 给孩子看</button>
+      <p class="text-sm text-gray-500" id="today-date"></p>
+    </div>
   </div>
 
   <!-- 双孩子积分对比 -->
@@ -83,6 +86,40 @@
   </div>
 </div>
 
+<!-- 孩子激励视图（不含具体奖励内容，可放心给孩子看） -->
+<div class="modal-overlay" id="kid-view">
+  <div class="modal-content" style="max-width:440px;">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold" id="kid-view-name">👦 哥哥</h3>
+      <button onclick="closeKidView()" class="text-gray-400 text-xl">✕</button>
+    </div>
+    <div class="text-center mb-4">
+      <div class="flex items-center justify-center gap-2">
+        <span style="font-size:24px;">⭐</span>
+        <span class="points-display" style="font-size:44px;" id="kid-study">0</span>
+      </div>
+      <p class="text-xs text-gray-400">学习积分</p>
+      <div class="flex items-center justify-center gap-2 mt-3">
+        <span style="font-size:24px;">💰</span>
+        <span class="points-display" style="font-size:44px;color:#f59e0b;" id="kid-cash">0</span>
+      </div>
+      <p class="text-xs text-gray-400">家务积分</p>
+    </div>
+    <div class="card" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+      <p class="text-sm text-green-700 font-semibold mb-2" id="kid-progress-text"></p>
+      <div style="background:#dcfce7;border-radius:999px;height:14px;overflow:hidden;">
+        <div id="kid-progress-bar" style="background:#22c55e;height:100%;width:0%;transition:width .4s;"></div>
+      </div>
+    </div>
+    <p class="text-xs text-gray-500 mt-3 text-center" id="kid-encourage"></p>
+    <p class="text-xs text-gray-300 mt-2 text-center">🔒 此视图不含具体奖励内容，可放心给孩子看</p>
+    <div class="flex gap-2 mt-4">
+      <button onclick="kidSwitch('brother')" id="kid-tab-brother" class="btn btn-sm flex-1">哥哥</button>
+      <button onclick="kidSwitch('little')" id="kid-tab-little" class="btn btn-sm flex-1">弟弟</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/store.js"></script>
 <script src="js/app.js"></script>
 <script>
@@ -90,6 +127,8 @@
   const store = SSMStore;
   const app = SSMApp;
   let currentChild = 'brother';
+  let kidRevealed = false; // 家长本次会话是否展开过具体奖励
+  let kidCurrent = 'brother';
 
   function init() {
     document.getElementById('today-date').textContent = app.formatDate(app.todayStr());
@@ -163,6 +202,25 @@
 
     if (!rewards || rewards.length === 0) {
       document.getElementById('rewards-list').innerHTML = '<div class="empty-state"><div class="empty-icon">🎁</div><p>暂无奖励配置</p><p class="text-xs mt-2">去设置页添加奖励</p></div>';
+      renderHistory();
+      return;
+    }
+
+    // 孩子不可见具体奖励：默认只显示"已解锁惊喜数"，不展示价目表
+    const hideDetails = store.settings && store.settings.kidRewardHidden && !kidRevealed;
+    if (hideDetails) {
+      const unlocked = rewards.filter(r => {
+        const p = r.type === 'cash' ? cashPoints : points;
+        return p >= r.cost;
+      }).length;
+      document.getElementById('rewards-list').innerHTML = `
+        <div class="card text-center py-5">
+          <div style="font-size:40px;">🎉</div>
+          <p class="text-sm text-gray-600 mt-2">已解锁 <b class="text-green-600">${unlocked}</b> 个庆祝惊喜</p>
+          <p class="text-xs text-gray-400 mt-1">攒够积分，妈妈会主动给你一个惊喜</p>
+          <button onclick="revealRewards()" class="btn btn-sm btn-outline mt-3" style="color:#3b82f6;border-color:#bfdbfe;">👁 家长：查看具体奖励</button>
+        </div>
+      `;
       renderHistory();
       return;
     }
@@ -314,6 +372,58 @@
       app.toast('积分不足或兑换失败');
     }
   };
+
+  window.revealRewards = function() {
+    kidRevealed = true;
+    renderRewards();
+  };
+
+  window.openKidView = function() {
+    kidCurrent = currentChild;
+    renderKidView();
+    document.getElementById('kid-view').classList.add('active');
+  };
+
+  window.closeKidView = function() {
+    document.getElementById('kid-view').classList.remove('active');
+  };
+
+  window.kidSwitch = function(id) {
+    kidCurrent = id;
+    renderKidView();
+  };
+
+  function renderKidView() {
+    const child = store.getChildById(kidCurrent);
+    if (!child) return;
+    const points = store.getPoints(kidCurrent);
+    const cashPoints = store.getCashablePoints(kidCurrent);
+    const rewards = store.getRewards(kidCurrent);
+    document.getElementById('kid-view-name').textContent = (kidCurrent === 'brother' ? '👦 ' : '👧 ') + child.name;
+    document.getElementById('kid-study').textContent = points;
+    document.getElementById('kid-cash').textContent = cashPoints;
+    const expRewards = rewards.filter(r => r.type !== 'cash');
+    const next = expRewards.filter(r => r.cost > points).sort((a, b) => a.cost - b.cost)[0];
+    const bar = document.getElementById('kid-progress-bar');
+    const txt = document.getElementById('kid-progress-text');
+    if (next) {
+      const pct = Math.max(8, Math.min(100, Math.round(points / next.cost * 100)));
+      bar.style.width = pct + '%';
+      txt.textContent = `再攒 ${next.cost - points} 分，就能解锁一个新的惊喜庆祝 🎉`;
+    } else {
+      bar.style.width = '100%';
+      txt.textContent = `你已攒够啦，妈妈会给你一个惊喜庆祝 🎉`;
+    }
+    const encourages = [
+      '你每天的努力，妈妈都看在眼里 👏',
+      '积分是你坚持的痕迹，超棒！',
+      '不必和别人比，你自己的进步最珍贵 💪',
+      '做完该做的，剩下的就是开心的庆祝时间 🎈'
+    ];
+    document.getElementById('kid-encourage').textContent = encourages[Math.floor(Math.random() * encourages.length)];
+    document.getElementById('kid-tab-brother').className = 'btn btn-sm flex-1 ' + (kidCurrent === 'brother' ? 'btn-primary' : 'btn-outline');
+    document.getElementById('kid-tab-little').className = 'btn btn-sm flex-1 ' + (kidCurrent === 'little' ? 'btn-primary' : 'btn-outline');
+  }
 
   document.getElementById('reward-modal').addEventListener('click', function(e) {
     if (e.target === this) closeRewardModal();

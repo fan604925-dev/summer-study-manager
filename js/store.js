@@ -38,7 +38,7 @@
   };
 
   // 数据版本号（修改默认数据时递增，触发自动修复）
-  const DATA_VERSION = '20';
+  const DATA_VERSION = '21';
 
   // 已知家务任务名称关键词（用于把用户自定义的家务模板也识别为 cashable）
   const KNOWN_CHORE_NAMES = ['洗碗', '扫地', '拖地', '洗衣服', '整理', '擦桌子', '叠衣服', '倒垃圾', '浇花', '晾衣服', '收衣服'];
@@ -284,7 +284,7 @@
     { childId: 'brother', name: '看典籍里的中国1期', cost: 50, type: 'learning', description: '学习型：看典籍里的中国1期' },
     { childId: 'brother', name: '看跟着书本去旅行1期', cost: 50, type: 'learning', description: '学习型：看跟着书本去旅行1期' },
     { childId: 'brother', name: '周末爬山+零食补给', cost: 80, type: 'medium', description: '周末爬山并带零食补给' },
-    { childId: 'brother', name: '逛商场+选一件小东西', cost: 80, type: 'medium', description: '逛商场选小礼物' },
+    { childId: 'brother', name: '逛商场挑一件小礼物（妈妈把关·预算内）', cost: 80, type: 'medium', description: '逛商场挑一件预算内的小礼物，由妈妈把关' },
     { childId: 'brother', name: '看一部英文电影', cost: 80, type: 'learning', description: '学习型：看一部英文电影' },
     { childId: 'brother', name: '机动游戏', cost: 120, type: 'large', description: '玩机动游戏' },
     { childId: 'brother', name: '游乐场半天', cost: 120, type: 'large', description: '游乐场玩半天' },
@@ -299,7 +299,7 @@
     { childId: 'little', name: '一起吃好吃的', cost: 40, type: 'small', description: '一起吃好吃的' },
     { childId: 'little', name: '买一本喜欢的书', cost: 40, type: 'small', description: '买一本喜欢的书' },
     { childId: 'little', name: '和妈妈看跟着书本去旅行1期', cost: 40, type: 'learning', description: '学习型：和妈妈看跟着书本去旅行1期' },
-    { childId: 'little', name: '周末逛商场+买小画具/贴纸', cost: 60, type: 'medium', description: '逛商场买画具或贴纸' },
+    { childId: 'little', name: '逛商场挑小画具/贴纸（妈妈把关·预算内）', cost: 60, type: 'medium', description: '逛商场挑画具或贴纸，由妈妈把关' },
     { childId: 'little', name: '一起爬山', cost: 60, type: 'medium', description: '周末一起爬山' },
     { childId: 'little', name: '动物园', cost: 100, type: 'large', description: '去动物园' },
     { childId: 'little', name: '游乐场', cost: 100, type: 'large', description: '去游乐场' },
@@ -325,7 +325,8 @@
     reminderTimes: ['07:00', '10:00', '12:00', '16:00'],
     completionBaseline: 0.6,
     pomodoroMinutes: 15,
-    breakMinutes: 5
+    breakMinutes: 5,
+    kidRewardHidden: true
   };
 
   /**
@@ -646,6 +647,16 @@
           }
         });
       }
+
+      // 迁移旧奖励名称（如"逛商场+选一件小东西" → 新描述，明确妈妈把关/预算内）
+      const REWARD_NAME_MIGRATIONS = {
+        '逛商场+选一件小东西': { name: '逛商场挑一件小礼物（妈妈把关·预算内）', description: '逛商场挑一件预算内的小礼物，由妈妈把关' },
+        '周末逛商场+买小画具/贴纸': { name: '逛商场挑小画具/贴纸（妈妈把关·预算内）', description: '逛商场挑画具或贴纸，由妈妈把关' }
+      };
+      this.rewards.forEach(r => {
+        const mig = REWARD_NAME_MIGRATIONS[r.name];
+        if (mig) { r.name = mig.name; r.description = mig.description; }
+      });
 
       // 确保设置包含所有默认字段
       const defaultSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));

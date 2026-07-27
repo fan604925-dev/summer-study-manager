@@ -51,6 +51,16 @@
     </div>
   </div>
 
+  <!-- 奖励展示设置 -->
+  <div class="card mb-3">
+    <h3 class="text-sm font-bold text-gray-700 mb-3">🎁 奖励展示设置</h3>
+    <p class="text-xs text-gray-400 mb-3">开启后，奖励页默认只显示积分和"已解锁惊喜数"，不展示具体能换什么，避免孩子把任务当成"买卖"。想给孩子看进度时，用奖励页的「👦 给孩子看」按钮（纯净鼓励视图）。</p>
+    <label class="flex items-center justify-between py-2">
+      <span class="text-sm text-gray-600">孩子不可见具体奖励</span>
+      <input type="checkbox" id="kid-reward-hidden" style="width:20px;height:20px;accent-color:#3b82f6;">
+    </label>
+  </div>
+
   <!-- 分班考倒计时 -->
   <div class="card mb-3">
     <h3 class="text-sm font-bold text-gray-700 mb-3">⚡ 分班考倒计时</h3>
@@ -125,6 +135,7 @@
     renderBaseline();
     renderPomodoro();
     renderExamDate();
+    renderRewardDisplay();
     renderChildrenInfo();
     renderActivities();
     renderRewardsConfig();
@@ -249,6 +260,18 @@
         </div>
       `;
     }).join('');
+  }
+
+  function renderRewardDisplay() {
+    const el = document.getElementById('kid-reward-hidden');
+    if (!el) return;
+    el.checked = !!(store.settings && store.settings.kidRewardHidden);
+    el.addEventListener('change', function() {
+      store.settings = store.settings || {};
+      store.settings.kidRewardHidden = this.checked;
+      store.save();
+      app.toast(this.checked ? '已开启：孩子看不到具体奖励' : '已关闭：展示全部奖励');
+    });
   }
 
   function renderRewardsConfig() {

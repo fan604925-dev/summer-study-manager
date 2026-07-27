@@ -332,4 +332,7 @@ const cashBeforeCustom = global.SSMStore.getCashablePoints('brother');
 global.SSMStore.markComplete(repairedInst.id, 1);
 assert(global.SSMStore.getCashablePoints('brother') === cashBeforeCustom + 5, '自定义洗碗完成后家务积分增加');
 
+// 19. 奖励展示默认隐藏开关随 v21 生效（_repairData 用 Object.assign 合并默认设置）
+assert(global.SSMStore.settings && global.SSMStore.settings.kidRewardHidden === true, '默认开启：孩子不可见具体奖励');
+
 console.log('\n🎉 所有测试通过！');
