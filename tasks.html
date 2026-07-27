@@ -12,15 +12,17 @@
 
 <div class="page-container">
 
-  <!-- 顶部 -->
-  <div class="flex items-center justify-between mb-4">
-    <h1 class="text-xl font-bold text-gray-800">📋 任务管理</h1>
-    <p class="text-sm text-gray-500" id="today-date"></p>
-  </div>
+  <!-- 吸顶头部：标题 + 孩子切换 -->
+  <div class="sticky-header">
+    <div class="flex items-center justify-between mb-3">
+      <h1 class="text-xl font-bold text-gray-800">📋 任务管理</h1>
+      <p class="text-sm text-gray-500" id="today-date"></p>
+    </div>
 
-  <!-- 孩子切换 -->
-  <div class="scroll-x mb-3">
-    <div class="flex gap-2" id="child-tabs" style="display:inline-flex;"></div>
+    <!-- 孩子切换 -->
+    <div class="scroll-x">
+      <div class="flex gap-2" id="child-tabs" style="display:inline-flex;"></div>
+    </div>
   </div>
 
   <!-- 完成率概览 -->
