@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#3b82f6">
+  <meta name="theme-color" content="#2f80ed">
   <title>统计 - 暑假学习管家</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -190,12 +190,12 @@
         datasets: [{
           label: '完成率(%)',
           data: data,
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59,130,246,0.1)',
+          borderColor: '#2f80ed',
+          backgroundColor: 'rgba(47,128,237,0.10)',
           fill: true,
           tension: 0.3,
           pointRadius: 4,
-          pointBackgroundColor: '#3b82f6'
+          pointBackgroundColor: '#2f80ed'
         }]
       },
       options: {
@@ -277,7 +277,7 @@
         labels: ['数学', '语文', '英语', '其他'],
         datasets: [{
           data: [subjectCounts.math, subjectCounts.chinese, subjectCounts.english, subjectCounts.other],
-          backgroundColor: ['#3b82f6', '#f59e0b', '#22c55e', '#a78bfa'],
+          backgroundColor: ['#2f80ed', '#f59e0b', '#22c55e', '#14b8a6'],
           borderWidth: 2,
           borderColor: '#fff'
         }]

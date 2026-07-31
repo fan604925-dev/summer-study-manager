@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#3b82f6">
+  <meta name="theme-color" content="#2f80ed">
   <title>暑假学习管家</title>
   <link rel="manifest" href="manifest.json">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -61,7 +61,7 @@
 
   <!-- 修复入口（界面异常时一键清理缓存） -->
   <div class="mt-3">
-    <button onclick="app.clearCacheAndReload()" class="btn btn-outline w-full" style="color:#3b82f6;border-color:#bfdbfe;font-size:13px;">
+    <button onclick="app.clearCacheAndReload()" class="btn btn-outline w-full" style="color:#2f80ed;border-color:#cfe0ff;font-size:13px;">
       🛠️ 界面异常/看不到任务？点此一键修复（不删数据）
     </button>
   </div>
@@ -210,7 +210,7 @@
                 <div class="flex items-center gap-2">
                   <span class="font-semibold text-sm text-gray-800">${r.time}</span>
                   <span class="text-xs text-gray-500">${r.label}</span>
-                  ${isCurrent ? '<span class="tag" style="background:#3b82f6;color:#fff;">现在</span>' : ''}
+                  ${isCurrent ? '<span class="tag" style="background:#2f80ed;color:#fff;">现在</span>' : ''}
                 </div>
                 <p class="text-xs text-gray-600 mt-1">${r.desc}</p>
               </div>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#3b82f6">
+  <meta name="theme-color" content="#2f80ed">
   <title>积分奖励 - 暑假学习管家</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="css/style.css">
@@ -155,7 +155,7 @@
       : 'flex-1 py-2 text-sm font-medium rounded-lg text-gray-500 hover:bg-gray-50';
 
     // 更新积分卡片边框
-    document.getElementById('brother-points-card').style.border = currentChild === 'brother' ? '2px solid #3b82f6' : '1px solid #e5e7eb';
+    document.getElementById('brother-points-card').style.border = currentChild === 'brother' ? '2px solid #2f80ed' : '1px solid #e5e7eb';
     document.getElementById('little-points-card').style.border = currentChild === 'little' ? '2px solid #ec4899' : '1px solid #e5e7eb';
   }
 
@@ -218,7 +218,7 @@
           <div style="font-size:40px;">🎉</div>
           <p class="text-sm text-gray-600 mt-2">已解锁 <b class="text-green-600">${unlocked}</b> 个庆祝惊喜</p>
           <p class="text-xs text-gray-400 mt-1">攒够积分，妈妈会主动给你一个惊喜</p>
-          <button onclick="revealRewards()" class="btn btn-sm btn-outline mt-3" style="color:#3b82f6;border-color:#bfdbfe;">👁 家长：查看具体奖励</button>
+          <button onclick="revealRewards()" class="btn btn-sm btn-outline mt-3" style="color:#2f80ed;border-color:#cfe0ff;">👁 家长：查看具体奖励</button>
         </div>
       `;
       renderHistory();

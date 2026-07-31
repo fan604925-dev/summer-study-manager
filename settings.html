@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#3b82f6">
+  <meta name="theme-color" content="#2f80ed">
   <title>设置 - 暑假学习管家</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="css/style.css">
@@ -29,7 +29,7 @@
     <p class="text-xs text-gray-400 mb-3">低于此比例的任务将顺延到次日</p>
     <div class="flex items-center gap-3">
       <input type="range" min="30" max="100" step="10" value="60" id="baseline-slider"
-        class="flex-1" style="accent-color:#3b82f6;">
+        class="flex-1" style="accent-color:#2f80ed;">
       <span class="text-lg font-bold text-blue-600" id="baseline-value">60%</span>
     </div>
   </div>
@@ -57,7 +57,7 @@
     <p class="text-xs text-gray-400 mb-3">开启后，奖励页默认只显示积分和"已解锁惊喜数"，不展示具体能换什么，避免孩子把任务当成"买卖"。想给孩子看进度时，用奖励页的「👦 给孩子看」按钮（纯净鼓励视图）。</p>
     <label class="flex items-center justify-between py-2">
       <span class="text-sm text-gray-600">孩子不可见具体奖励</span>
-      <input type="checkbox" id="kid-reward-hidden" style="width:20px;height:20px;accent-color:#3b82f6;">
+      <input type="checkbox" id="kid-reward-hidden" style="width:20px;height:20px;accent-color:#2f80ed;">
     </label>
   </div>
 
@@ -103,7 +103,7 @@
       <button onclick="resetData()" class="btn btn-outline w-full" style="color:#ef4444;border-color:#fecaca;">
         🗑️ 重置全部数据（恢复默认）
       </button>
-      <button onclick="clearCacheAndReload()" class="btn btn-outline w-full" style="color:#3b82f6;border-color:#bfdbfe;">
+      <button onclick="clearCacheAndReload()" class="btn btn-outline w-full" style="color:#2f80ed;border-color:#cfe0ff;">
         🔄 清除缓存并刷新（解决界面不更新）
       </button>
     </div>
@@ -219,7 +219,7 @@
       <div class="card" style="margin-bottom:8px;">
         <div class="flex items-center gap-3">
           <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg"
-            style="background:${c.id === 'brother' ? '#3b82f6' : '#f59e0b'};">
+            style="background:${c.id === 'brother' ? '#2f80ed' : '#f59e0b'};">
             ${c.name[0]}
           </div>
           <div class="flex-1">
