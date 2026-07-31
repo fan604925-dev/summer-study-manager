@@ -81,15 +81,16 @@
 - v20: 支持自定义任务标记为家务积分——添加任务弹窗增加 💰 家务积分开关；任务详情对自定义任务可切换学习/家务积分；扩展 `KNOWN_CHORE_NAMES` 自动识别「整理/擦桌子/叠衣服/倒垃圾/浇花/晾衣服/收衣服」等常见家务；升级 SW 缓存到 v8
 - v21: 防止奖励"价目表化"引发孩子交易思维——①设置页新增「孩子不可见具体奖励」开关(`settings.kidRewardHidden`，默认开)；开启后奖励页默认只显示"已解锁N个庆祝惊喜"、不展示具体可换项，需家长点「👁 查看具体奖励」才展开；②奖励页新增「👦 给孩子看」纯净激励视图(只显示积分+进度条+鼓励语，不含价目表)；③把"逛商场+选一件小东西"等描述改为"逛商场挑一件小礼物（妈妈把关·预算内）"等明确边界，`_repairData` 加旧奖励名迁移；SW 缓存升 v9
 - v22: `tasks.html` 孩子切换栏吸顶固定（sticky header），避免滚动后误切哥哥/弟弟；SW 缓存升 v10
+- v23: 笔记整理归为学习项——旧 `_repairData` 因 `KNOWN_CHORE_NAMES` 含「整理」把「猿辅导*笔记整理」误判为家务（`cashable:true`）；改为仅「其他」科目+命中家务词+排除「笔记」才自动标家务，实例同步以模板为准（`inst.cashable = !!tmpl.cashable && !name.includes('笔记')`）；DATA_VERSION 21→22 强制老用户修复错标实例；SW 缓存升 v11
 
 ## 技术备忘（关键约束）
-- localStorage key 前缀 `ssm_`，数据版本 `DATA_VERSION='20'`
+- localStorage key 前缀 `ssm_`，数据版本 `DATA_VERSION='22'`
 - 积分结构：学习积分 `points[childId] = {current, total, spent, history}`；家务积分 `cashablePoints[childId]` 同结构（key `ssm_cashablePoints`）；旧版数字格式由 `_repairData` 自动迁移
 - `_repairData` **不再** 清空 `taskInstances`；模板损坏（<40%）或奖励为空时强制重新填充默认
 - `_ensureInstancesForDate` 会自动清理"因模板调整而不应再出现的旧实例"（保留自定义/已完成/顺延任务），保证模板 daily→dateRange 等调整后当天列表立即正确
 - **任务删除(删减)功能**：`store.deleteTaskTemplate(id)` 删模板+所有实例；默认任务删后写入 `deletedTemplateIds`（`ssm_deletedTemplates`），`_repairData` 两条分支末尾都按 `deletedTemplateIds` 过滤 → 版本升级/修复不复活；已得积分不扣回；`tasks.html` 列表项🗑️+弹窗按钮双入口，删除前 `app.confirm` 确认
 - **家务劳动+零花钱(v17/v18/v19/v20)**：洗碗/扫地/拖地(每日)+洗衣服(每周)，哥哥弟弟各一套，`cashable:true`；家务积分 `cashablePoints`（池 `ssm_cashablePoints`，与学习积分 `points` 分离）只累加 cashable 任务；`markComplete`/`markIncomplete` 优先按 `instance.cashable ?? template.cashable` 路由到对应池；`childId='both'` 任务完成时给哥哥、弟弟两个池都加分；奖励 `type:'cash'` 走 `spendCashablePoints`，与体验奖励（学习积分）互不串；兑换比例 **1元=10分（0.1元/分）**，零花钱奖励库 brother 50/100/200分、little 30/50/100分；`_repairData` 会把自定义但名字含“洗碗/扫地/拖地/洗衣服/整理/擦桌子/叠衣服/倒垃圾/浇花/晾衣服/收衣服”的模板也识别为 cashable，并同步旧实例的 `cashable` 标记；DATA_VERSION 升 20，自定义任务可在添加时勾选 💰家务积分，或在任务详情中切换学习/家务积分
-- Service Worker：`CACHE_NAME='ssm-v10'`，**HTML/JS/CSS/manifest 全部网络优先**（仅离线回退缓存），图标缓存优先
+- Service Worker：`CACHE_NAME='ssm-v11'`，**HTML/JS/CSS/manifest 全部网络优先**（仅离线回退缓存），图标缓存优先
 - 考试日期可关闭：设置页留空 `brother.examDate` → 倒计时显示"长期计划模式"（∞）
 - 浏览器若仍显示旧界面：**首页「🛠️ 一键修复」按钮**（app.clearCacheAndReload）或设置页「清除缓存并刷新」或 DevTools 手动 unregister SW
 - 验证脚本：`test_store.js`（Node）、`test_html_syntax.js`（Node）
