@@ -38,7 +38,7 @@
   };
 
   // 数据版本号（修改默认数据时递增，触发自动修复）
-  const DATA_VERSION = '21';
+  const DATA_VERSION = '22';
 
   // 已知家务任务名称关键词（用于把用户自定义的家务模板也识别为 cashable）
   const KNOWN_CHORE_NAMES = ['洗碗', '扫地', '拖地', '洗衣服', '整理', '擦桌子', '叠衣服', '倒垃圾', '浇花', '晾衣服', '收衣服'];
@@ -624,11 +624,25 @@
       }
 
       // 5) 把用户自定义但名字属于已知家务的模板也标记为 cashable（兼容旧手动添加的家务任务）
+      //    注意：笔记整理属于学习项，名字含「整理」但科目不是「其他」，绝不记为家务
       this.taskTemplates = this.taskTemplates.map(t => {
+        const name = t.name || '';
+        // 笔记类（语文/数学/英语笔记整理）一律是学习项
+        if (name.includes('笔记')) {
+          if (t.cashable) {
+            const { cashable, ...rest } = t;
+            return rest;
+          }
+          return t;
+        }
         if (t.cashable) return t;
-        const isChoreName = KNOWN_CHORE_NAMES.some(name => (t.name || '').includes(name));
-        if (isChoreName) {
-          return { ...t, cashable: true };
+        // 仅「其他」科目的任务、且名字命中已知家务词，才自动识别为家务
+        const isOtherSubject = (!t.subject || t.subject === 'other');
+        if (isOtherSubject) {
+          const isChoreName = KNOWN_CHORE_NAMES.some(cn => name.includes(cn));
+          if (isChoreName) {
+            return { ...t, cashable: true };
+          }
         }
         return t;
       });
@@ -738,16 +752,17 @@
         });
       });
 
-      // 同步所有实例的 cashable 标记（根据当前模板属性，避免旧实例走错积分池）
+      // 同步所有实例的 cashable 标记（以模板为准，避免旧实例沿用错误标记走错积分池）
       Object.keys(this.taskInstances).forEach(dateStr => {
         this.taskInstances[dateStr].forEach(inst => {
           const tmpl = this.getTaskTemplateById(inst.templateId);
           if (tmpl) {
-            inst.cashable = !!(tmpl.cashable || inst.cashable);
+            // 笔记类强制学习项；其余跟随模板的 cashable 属性
+            inst.cashable = !!(tmpl.cashable) && !(tmpl.name || '').includes('笔记');
           } else if (inst.templateId) {
-            // 模板已不存在时，根据实例名称/原模板名兜底识别家务任务
+            // 模板已不存在时，根据实例名称/原模板名兜底识别家务任务（笔记除外）
             const instName = inst.taskName || inst.name || '';
-            inst.cashable = !!KNOWN_CHORE_NAMES.some(name => instName.includes(name));
+            inst.cashable = !!KNOWN_CHORE_NAMES.some(name => instName.includes(name)) && !instName.includes('笔记');
           }
         });
       });

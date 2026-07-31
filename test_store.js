@@ -332,6 +332,43 @@ const cashBeforeCustom = global.SSMStore.getCashablePoints('brother');
 global.SSMStore.markComplete(repairedInst.id, 1);
 assert(global.SSMStore.getCashablePoints('brother') === cashBeforeCustom + 5, '自定义洗碗完成后家务积分增加');
 
+// 18.3 笔记整理（名字含「整理」）必须当作学习项，绝不能记为家务积分（修复：曾因命中 KNOWN_CHORE_NAMES「整理」被误判）
+const noteTplId = 'note_test_x';
+global.SSMStore.taskTemplates.push({
+  id: noteTplId,
+  childId: 'brother',
+  subject: 'chinese',
+  name: '猿辅导语文笔记整理（测试）',
+  frequency: 'daily',
+  duration: 15,
+  points: 12,
+  custom: true
+});
+const noteDate = new Date().toISOString().split('T')[0];
+if (!global.SSMStore.taskInstances[noteDate]) global.SSMStore.taskInstances[noteDate] = [];
+global.SSMStore.taskInstances[noteDate].push({
+  id: `instance_${noteDate}_${noteTplId}`,
+  templateId: noteTplId,
+  childId: 'brother',
+  date: noteDate,
+  status: 'pending',
+  completedPercentage: 0,
+  pointsEarned: 0,
+  carryOver: false,
+  cashable: true, // 模拟旧数据被误标记为家务
+  note: ''
+});
+global.SSMStore._repairData();
+const noteTpl = global.SSMStore.getTaskTemplateById(noteTplId);
+assert(noteTpl.cashable !== true, '笔记模板修复后不是家务积分');
+const noteInst = global.SSMStore.taskInstances[noteDate].find(i => i.templateId === noteTplId);
+assert(noteInst.cashable !== true, '笔记实例修复后不是家务积分');
+const cashBeforeNote = global.SSMStore.getCashablePoints('brother');
+const studyBeforeNote = global.SSMStore.getPoints('brother');
+global.SSMStore.markComplete(noteInst.id, 1);
+assert(global.SSMStore.getCashablePoints('brother') === cashBeforeNote, '完成笔记后家务积分不变');
+assert(global.SSMStore.getPoints('brother') === studyBeforeNote + 12, '完成笔记后学习积分增加');
+
 // 19. 奖励展示默认隐藏开关随 v21 生效（_repairData 用 Object.assign 合并默认设置）
 assert(global.SSMStore.settings && global.SSMStore.settings.kidRewardHidden === true, '默认开启：孩子不可见具体奖励');
 
