@@ -372,4 +372,26 @@ assert(global.SSMStore.getPoints('brother') === studyBeforeNote + 12, '完成笔
 // 19. 奖励展示默认隐藏开关随 v21 生效（_repairData 用 Object.assign 合并默认设置）
 assert(global.SSMStore.settings && global.SSMStore.settings.kidRewardHidden === true, '默认开启：孩子不可见具体奖励');
 
+// 20. 奖励结构 v25：自由的一天=1000分里程碑；小自由便宜可兑；旧自由日迁移为里程碑
+const broRewards = global.SSMStore.getRewards('brother');
+const litRewards = global.SSMStore.getRewards('little');
+const broMilestone = broRewards.find(r => r.type === 'milestone');
+const litMilestone = litRewards.find(r => r.type === 'milestone');
+assert(broMilestone && broMilestone.cost === 1000, '哥哥自由的一天为1000分里程碑');
+assert(litMilestone && litMilestone.cost === 1000, '弟弟自由的一天为1000分里程碑');
+assert(!broRewards.find(r => r.cost === 200 && r.name.includes('自由')), '哥哥旧200分自由日已不存在');
+assert(broRewards.filter(r => r.type === 'freedom').length >= 4, '哥哥新增小自由奖励≥4项');
+assert(litRewards.filter(r => r.type === 'freedom').length >= 4, '弟弟新增小自由奖励≥4项');
+// 旧奖励就地迁移：模拟老用户库里有 200/150 分的自由日，repair 后应升级为里程碑且不重复
+const legacy = [
+  { childId: 'brother', name: '周末自由一整天', cost: 200, type: 'xl', description: 'x' },
+  { childId: 'little', name: '周末自由一天', cost: 150, type: 'xl', description: 'x' }
+];
+global.SSMStore.rewards = global.SSMStore.rewards.concat(legacy);
+global.SSMStore._repairData();
+const afterBro = global.SSMStore.getRewards('brother').filter(r => r.name.includes('自由的一天'));
+const afterLit = global.SSMStore.getRewards('little').filter(r => r.name.includes('自由的一天'));
+assert(afterBro.length === 1 && afterBro[0].type === 'milestone' && afterBro[0].cost === 1000, '哥哥旧自由日迁移为单一里程碑(无重复)');
+assert(afterLit.length === 1 && afterLit[0].type === 'milestone' && afterLit[0].cost === 1000, '弟弟旧自由日迁移为单一里程碑(无重复)');
+
 console.log('\n🎉 所有测试通过！');

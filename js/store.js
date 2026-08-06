@@ -38,7 +38,7 @@
   };
 
   // 数据版本号（修改默认数据时递增，触发自动修复）
-  const DATA_VERSION = '22';
+  const DATA_VERSION = '23';
 
   // 已知家务任务名称关键词（用于把用户自定义的家务模板也识别为 cashable）
   const KNOWN_CHORE_NAMES = ['洗碗', '扫地', '拖地', '洗衣服', '整理', '擦桌子', '叠衣服', '倒垃圾', '浇花', '晾衣服', '收衣服'];
@@ -277,6 +277,12 @@
     { childId: 'brother', name: '选周末活动', cost: 30, type: 'privilege', description: '可选周末活动' },
     { childId: 'brother', name: '晚睡30分钟', cost: 30, type: 'privilege', description: '晚上延迟30分钟睡觉' },
     { childId: 'brother', name: '免做1项小任务', cost: 30, type: 'privilege', description: '免除一项小任务' },
+    // --- 小自由（便宜、随时可兑、孩子自己说了算）---
+    { childId: 'brother', name: '自己决定今晚吃什么', cost: 25, type: 'freedom', description: '今晚饭菜由孩子决定' },
+    { childId: 'brother', name: '多玩30分钟', cost: 25, type: 'freedom', description: '额外自由玩耍30分钟' },
+    { childId: 'brother', name: '选一部全家看的电影', cost: 30, type: 'freedom', description: '由孩子选一部全家一起看的电影' },
+    { childId: 'brother', name: '晚睡延长到45分钟', cost: 40, type: 'freedom', description: '比平时晚睡45分钟' },
+    { childId: 'brother', name: '邀请同学来家里玩', cost: 50, type: 'freedom', description: '邀请一位同学来家里玩' },
     { childId: 'brother', name: '一起吃烧烤', cost: 50, type: 'small', description: '家庭烧烤' },
     { childId: 'brother', name: '一起吃火锅', cost: 50, type: 'small', description: '家庭火锅' },
     { childId: 'brother', name: '一起喝奶茶', cost: 50, type: 'small', description: '一起喝奶茶' },
@@ -290,12 +296,18 @@
     { childId: 'brother', name: '游乐场半天', cost: 120, type: 'large', description: '游乐场玩半天' },
     { childId: 'brother', name: '和同学约玩+请吃一顿', cost: 120, type: 'large', description: '和同学约玩并请吃饭' },
     { childId: 'brother', name: '一起吃大餐+看电影', cost: 200, type: 'xl', description: '大餐+电影' },
-    { childId: 'brother', name: '周末自由一整天', cost: 200, type: 'xl', description: '周末自由安排一天' },
+    { childId: 'brother', name: '自由的一天（1000分里程碑大奖）', cost: 1000, type: 'milestone', description: '攒满1000分专属大庆祝：自由安排一整天，具体安排需和妈妈确认' },
 
     // --- 弟弟奖励库 ---
     { childId: 'little', name: '选睡前故事', cost: 20, type: 'privilege', description: '选睡前故事' },
     { childId: 'little', name: '额外画画30分钟', cost: 20, type: 'privilege', description: '额外画画30分钟' },
     { childId: 'little', name: '和妈妈做手工', cost: 20, type: 'privilege', description: '和妈妈一起做手工' },
+    // --- 小自由（便宜、随时可兑、孩子自己说了算）---
+    { childId: 'little', name: '自己决定今晚吃什么', cost: 20, type: 'freedom', description: '今晚饭菜由孩子决定' },
+    { childId: 'little', name: '选一部全家看的电影', cost: 25, type: 'freedom', description: '由孩子选一部全家一起看的电影' },
+    { childId: 'little', name: '晚睡15分钟', cost: 20, type: 'freedom', description: '比平时晚睡15分钟' },
+    { childId: 'little', name: '决定一次周末去哪玩', cost: 30, type: 'freedom', description: '由孩子决定一次周末去哪玩' },
+    { childId: 'little', name: '邀请小朋友来家里玩', cost: 40, type: 'freedom', description: '邀请一位小朋友来家里玩' },
     { childId: 'little', name: '一起吃好吃的', cost: 40, type: 'small', description: '一起吃好吃的' },
     { childId: 'little', name: '买一本喜欢的书', cost: 40, type: 'small', description: '买一本喜欢的书' },
     { childId: 'little', name: '和妈妈看跟着书本去旅行1期', cost: 40, type: 'learning', description: '学习型：和妈妈看跟着书本去旅行1期' },
@@ -305,7 +317,7 @@
     { childId: 'little', name: '游乐场', cost: 100, type: 'large', description: '去游乐场' },
     { childId: 'little', name: '和妈妈一起做大手工', cost: 100, type: 'large', description: '和妈妈一起做大手工' },
     { childId: 'little', name: '一起吃大餐+逛书店买全套书', cost: 150, type: 'xl', description: '大餐+书店买全套书' },
-    { childId: 'little', name: '周末自由一天', cost: 150, type: 'xl', description: '周末自由安排一天' },
+    { childId: 'little', name: '自由的一天（1000分里程碑大奖）', cost: 1000, type: 'milestone', description: '攒满1000分专属大庆祝：自由安排一整天，具体安排需和妈妈确认' },
 
     // --- 哥哥零花钱兑换（家务积分 → 钱，1元=10分） ---
     { childId: 'brother', name: '兑换5元零花钱', cost: 50, type: 'cash', description: '用家务积分换5元零花钱' },
@@ -671,6 +683,24 @@
         const mig = REWARD_NAME_MIGRATIONS[r.name];
         if (mig) { r.name = mig.name; r.description = mig.description; }
       });
+
+      // 把旧的"自由的一天"重定位为 1000 分里程碑大奖（避免日常可兑、价格错位、与新版重复）
+      const MILESTONE_NAME = '自由的一天（1000分里程碑大奖）';
+      this.rewards.forEach(r => {
+        if (r.name === '周末自由一整天' || r.name === '周末自由一天') {
+          const alreadyHas = this.rewards.some(x => x !== r && x.name === MILESTONE_NAME && x.type === 'milestone');
+          if (alreadyHas) {
+            // 默认里程碑已存在，直接移除旧条目，避免重复
+            r._drop = true;
+          } else {
+            r.name = MILESTONE_NAME;
+            r.cost = 1000;
+            r.type = 'milestone';
+            r.description = '攒满1000分专属大庆祝：自由安排一整天，具体安排需和妈妈确认';
+          }
+        }
+      });
+      this.rewards = this.rewards.filter(r => !r._drop);
 
       // 确保设置包含所有默认字段
       const defaultSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
